@@ -1,6 +1,3 @@
-#%%
-
-
 #%% Load Data
 # Load Data
 from hn.load_data import load_data
@@ -11,4 +8,4 @@ print(f'The number of columns: {len(data.columns)}')
 
 data = pd.DataFrame(data)
 
-# %%
+ # %%
