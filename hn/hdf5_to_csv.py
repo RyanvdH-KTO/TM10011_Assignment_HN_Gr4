@@ -55,6 +55,7 @@ for num, file in enumerate(files):
 
         for l, v in zip(feature_labels, feature_values):
             data[l].append(v)
+        
 
         ID = os.path.basename(file)[12:-5]
         data['ID'].append(ID)
@@ -74,3 +75,6 @@ for k in list(data.keys()):
 
 df = pd.DataFrame(data)
 df.to_csv(output, index=False)
+
+
+
