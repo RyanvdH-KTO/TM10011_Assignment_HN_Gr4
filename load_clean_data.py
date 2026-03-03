@@ -2,15 +2,12 @@
 
 import pandas as pd
 import os
-from hn.load_data import load_data
 
-def load_clean_data():
-    data = load_data()
+def load_data():
+    this_directory = os.path.dirname(os.path.abspath(__file__))
+    data = pd.read_csv(os.path.join(this_directory, 'HN_radiomicFeatures.csv'), index_col=0)
     data = pd.DataFrame(data)
-    
     return data
-
-
 
 
 
