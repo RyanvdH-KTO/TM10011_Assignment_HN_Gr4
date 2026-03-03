@@ -10,4 +10,4 @@ print(f'The number of columns: {len(data.columns)}')
 
 data = pd.DataFrame(data)
 
- # %%
+# %%
