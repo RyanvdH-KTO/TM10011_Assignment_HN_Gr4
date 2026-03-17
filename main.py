@@ -1,11 +1,11 @@
 #%%
 import pandas as pd
 from hn.load_data import load_data
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, GridSearchCV, StratifiedKFold
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
 from hn.load_data import load_data
-
-
+from sklearn.pipeline import Pipeline
+from sklearn.linear_model import LogisticRegression
 
 #%% Load Data
 # Load Data
@@ -141,4 +141,23 @@ def main():
 if __name__ == "__main__":
     X_train, X_test, y_train, y_test, scaler = main()
 
-# %%
+# %% Elastic-Net-Logistic-Regression
+#Elastic-Net-Logistic-Regression
+
+kf = StratifiedKFold(n_splits=10, shuffle=True, random_state=42)
+preprocessor = X_test, y_test
+
+pipeline_regression = Pipeline(steps=[
+    ('preprocessor', preprocessor),
+    ('classifier', LogisticRegression(penalty='l1', solver='saga', class_weight='balanced', random_state=42, max_iter=10000))
+])
+
+param_grid_regression = {
+    'classifier__C': [0.001, 0.01, 0.1, 1, 10]
+}
+
+grid_search_regression = GridSearchCV(pipeline_regression, param_grid_regression, cv=kf, scoring='roc_auc', n_jobs=-1)
+grid_search_regression.fit(X_train, y_train)
+
+print('Best parameters found:\n', grid_search_regression.best_params_)
+print("Beste score:", grid_search_regression.best_score_)

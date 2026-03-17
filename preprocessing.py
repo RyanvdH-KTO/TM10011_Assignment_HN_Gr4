@@ -141,7 +141,4 @@ def main():
 if __name__ == "__main__":
     X_train, X_test, y_train, y_test, scaler = main()
 
-# %% Elastic-Net-Logistic-Regression
-#Elastic-Net-Logistic-Regression
-
 
