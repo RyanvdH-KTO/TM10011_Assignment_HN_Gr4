@@ -43,18 +43,6 @@ for t in thresholds:
     selector.fit(features)
     n_features_kept.append(selector.get_support().sum())
 
-# Plot how many features survive at each threshold
-plt.figure(figsize=(8, 4))
-plt.plot(thresholds, n_features_kept, marker='o')
-plt.axhline(y=features.shape[0], color='red', linestyle='--', label='n_samples (danger zone below this!)')
-plt.xlabel("Variance threshold")
-plt.ylabel("Number of features kept")
-plt.title("Low Variance Filtering — how many features survive?")
-plt.legend()
-plt.grid(True)
-plt.tight_layout()
-plt.show()
-
 selector = VarianceThreshold(threshold=0.01)
 features_filtered = selector.fit_transform(features)  
 
@@ -73,6 +61,8 @@ for group in groups:
     count = sum(1 for name in surviving_feature_names if name.startswith(group))
     total = sum(1 for name in features.columns if name.startswith(group))
     print(f"{group}: {count} / {total} survived")
+
+
 
 
 # %%
