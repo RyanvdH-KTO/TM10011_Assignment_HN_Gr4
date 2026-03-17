@@ -128,7 +128,7 @@ X_train_rfe, X_test_rfe, selected_idx, ranking, selector = rfe_selection(
 # %%
 # Sequential Feature Selector
 from sklearn.feature_selection import SequentialFeatureSelector
-def sfs_selection(X_train, X_test, y_train, estimator, n_features=10, direction="forward", scoring="accuracy", cv=5):
+def sfs_selection(X_train, X_test, y_train, estimator, n_features, tol, direction="forward", scoring="accuracy", cv=5):
     selector = SequentialFeatureSelector(
         estimator,
         n_features_to_select=n_features,
@@ -147,7 +147,39 @@ def sfs_selection(X_train, X_test, y_train, estimator, n_features=10, direction=
     print("Shape train after selection:", X_train_sel.shape)
     print("Shape test after selection:", X_test_sel.shape)
 
-    return X_train_sel, X_test_sel, selected_indices, selector
+    return X_train_sel, X_test_sel, selected_indices, ranking, selector
 
 # SFS testen met Logistic Regression
+X_train_sfs, X_test_sfs, selected_idx, selector = sfs_selection(
+    X_train,
+    X_test,
+    y_train,
+    estimator=LogisticRegression(max_iter=1000, random_state=42),
+    n_features='auto',
+    tol=0.01
+)
 
+
+
+from sklearn.feature_selection import SequentialFeatureSelector
+
+def perform_sfs(features_train, label_train, model, n_splits=5):
+    sfs = SequentialFeatureSelector(
+        estimator=model,
+        n_features_to_select='auto',
+        tol=0.01,
+        direction='forward',
+        scoring='accuracy',
+        cv=n_splits,
+        n_jobs=-1
+    )
+
+    sfs.fit(features_train, label_train)
+
+    selected_indices = sfs.get_support(indices=True)
+
+    print("Selected feature indices:", selected_indices)
+    print("Number of selected features:", len(selected_indices))
+
+    return sfs, selected_indices
+# %%
