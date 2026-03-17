@@ -11,6 +11,9 @@ from sklearn.feature_selection import f_classif
 from sklearn.feature_selection import RFE
 from sklearn.linear_model import LogisticRegression
 from sklearn.feature_selection import SequentialFeatureSelector
+from preprocessing import preprocess_pipeline
+from sklearn.svm import SVC
+
 
 #%% Import and select data
 #Import and select data
@@ -94,7 +97,7 @@ X_train_sel, X_test_sel, selected_indices, scores, selector = select_k_best_anov
 
 # %%
 # RFE: recursive feature elimination
-def rfe_selection(X_train, X_test, y_train, estimator, n_features=10):
+def rfe_selection(X_train, X_test, y_train, estimator, n_features):
 
     selector = RFE(estimator=estimator, n_features_to_select=n_features)
 
@@ -111,75 +114,79 @@ def rfe_selection(X_train, X_test, y_train, estimator, n_features=10):
 
     return X_train_sel, X_test_sel, selected_indices, ranking, selector
 
+# %%
 # RFE testen met Logistic Regression
+lr_model = LogisticRegression(max_iter=1000, random_state=42)
 X_train_rfe, X_test_rfe, selected_idx, ranking, selector = rfe_selection(
     X_train,
     X_test,
     y_train,
-    estimator=LogisticRegression(max_iter=1000, random_state=42),
+    estimator=lr_model,
     n_features=10
-)
+    )
 
 
 
 # %%
 # Sequential Feature Selector
-from sklearn.feature_selection import SequentialFeatureSelector
-def sfs_selection(X_train, X_test, y_train, estimator, n_features, tol, direction="forward", scoring="accuracy", cv=5):
+def sfs_selection(
+    X_train,
+    X_test,
+    y_train,
+    estimator,
+    tol,
+    direction,
+    scoring,
+    cv
+):
     selector = SequentialFeatureSelector(
-        estimator,
-        n_features_to_select=n_features,
-        direction=direction,
-        scoring=scoring,
-        cv=cv,
-        n_jobs=-1
-    )
+    estimator=estimator,
+    n_features_to_select="auto",
+    tol=tol,
+    direction=direction,
+    scoring=scoring,
+    cv=cv,
+    n_jobs=-1
+)
 
-    X_train_sel = selector.fit_transform(X_train, y_train)
+    # Fit alleen op train
+    selector.fit(X_train, y_train)
+
+    # Daarna transform train + test
+    X_train_sel = selector.transform(X_train)
     X_test_sel = selector.transform(X_test)
 
     selected_indices = selector.get_support(indices=True)
 
-    print("Selected feature indices:", selected_indices)
+    print("Selected feature indices sfs:", selected_indices)
+    print("Number of selected features:", len(selected_indices))
     print("Shape train after selection:", X_train_sel.shape)
     print("Shape test after selection:", X_test_sel.shape)
 
-    return X_train_sel, X_test_sel, selected_indices, ranking, selector
+    return X_train_sel, X_test_sel, selected_indices, selector
 
-# SFS testen met Logistic Regression
+
+# %%
+# SFS testen met modellen
+# X_train, X_test, y_train, y_test, scaler = preprocess_pipeline(scale_method="standard")
+
+lr_model = LogisticRegression(max_iter=1000, random_state=42)
+svm_model = SVC(kernel="linear", probability=True)
+
+
 X_train_sfs, X_test_sfs, selected_idx, selector = sfs_selection(
-    X_train,
-    X_test,
-    y_train,
-    estimator=LogisticRegression(max_iter=1000, random_state=42),
-    n_features='auto',
-    tol=0.01
+    X_train=X_train,
+    X_test=X_test,
+    y_train=y_train,
+    estimator=svm_model,
+    tol=0.0001,
+    direction="forward",
+    scoring="accuracy",
+    cv=5
 )
 
-
-
-from sklearn.feature_selection import SequentialFeatureSelector
-
-def perform_sfs(features_train, label_train, model, n_splits=5):
-    sfs = SequentialFeatureSelector(
-        estimator=model,
-        n_features_to_select='auto',
-        tol=0.01,
-        direction='forward',
-        scoring='accuracy',
-        cv=n_splits,
-        n_jobs=-1
-    )
-
-    sfs.fit(features_train, label_train)
-
-    selected_indices = sfs.get_support(indices=True)
-
-    print("Selected feature indices:", selected_indices)
-    print("Number of selected features:", len(selected_indices))
-
-    return sfs, selected_indices
 # %%
+
 
 
 
