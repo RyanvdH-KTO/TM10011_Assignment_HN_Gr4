@@ -2,6 +2,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import os
 from hn.load_data import load_data
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.preprocessing import StandardScaler, LabelEncoder, MinMaxScaler, RobustScaler
@@ -12,6 +13,8 @@ from sklearn.feature_selection import RFE
 from sklearn.linear_model import LogisticRegression
 from sklearn.feature_selection import SequentialFeatureSelector
 from sklearn.model_selection import train_test_split
+from sklearn.model_selection import StratifiedKFold, cross_validate
+
 
 
 #%% Load Data
@@ -23,11 +26,12 @@ from sklearn.model_selection import train_test_split
 # data = pd.DataFrame(data)
 
 #%%
-def load_dataset():
-    data = load_data()
-    data = pd.DataFrame(data)
+#Load data
 
-    print("Dataset shape:", data.shape)
+def load_data():
+    this_directory = os.path.dirname(os.path.abspath(__file__))
+    data = pd.read_csv(os.path.join(this_directory, 'HN_radiomicFeatures.csv'), index_col=0)
+
     return data
 
 
@@ -103,7 +107,7 @@ def scale_features(X_train, X_test, method="standard"):
 def preprocess_pipeline(scale_method="standard"):
 
     # Load dataset
-    data = load_dataset()
+    data = load_data()
 
     # Check missing values
     check_missing_values(data)
@@ -139,6 +143,7 @@ def preprocess_pipeline(scale_method="standard"):
 
 
 #%%
+from feature_extraction import select_k_best_anova, sfs_selection
 def main():
     X_train, X_test, y_train, y_test, scaler = preprocess_pipeline(scale_method="standard")
     return X_train, X_test, y_train, y_test, scaler
