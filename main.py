@@ -2,7 +2,6 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import os
 from hn.load_data import load_data
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.preprocessing import StandardScaler, LabelEncoder, MinMaxScaler, RobustScaler
@@ -26,12 +25,11 @@ from sklearn.model_selection import StratifiedKFold, cross_validate
 # data = pd.DataFrame(data)
 
 #%%
-#Load data
+def load_dataset():
+    data = load_data()
+    data = pd.DataFrame(data)
 
-def load_data():
-    this_directory = os.path.dirname(os.path.abspath(__file__))
-    data = pd.read_csv(os.path.join(this_directory, 'HN_radiomicFeatures.csv'), index_col=0)
-
+    print("Dataset shape:", data.shape)
     return data
 
 
@@ -64,7 +62,6 @@ def split_features_target(data, label_col='label'):
 def encode_labels(y):
     y_encoded = y.map({'T12': 0, 'T34': 1})
     return y_encoded
-
 
 #%%
 # Train test split (stratified)
@@ -101,13 +98,11 @@ def scale_features(X_train, X_test, method="standard"):
     return X_train_scaled, X_test_scaled, scaler
 
 
-
 # %%
-
 def preprocess_pipeline(scale_method="standard"):
 
     # Load dataset
-    data = load_data()
+    data = load_dataset()
 
     # Check missing values
     check_missing_values(data)
@@ -143,14 +138,48 @@ def preprocess_pipeline(scale_method="standard"):
 
 
 #%%
-from feature_extraction import select_k_best_anova, sfs_selection
+from feature_extraction import select_k_best_anova, rfe_selection, sfs_selection 
+from sklearn.pipeline import Pipeline
+
 def main():
     X_train, X_test, y_train, y_test, scaler = preprocess_pipeline(scale_method="standard")
-    return X_train, X_test, y_train, y_test, scaler
 
+    estimator = LogisticRegression(max_iter=1000, random_state=42)
+    clf = LogisticRegression(max_iter=1000, random_state=42)
+    cv  = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+    feature_selectors = {
+        "k best ANOVA" : SelectKBest(score_func=f_classif, k=30),
+        "RFE"          : RFE(estimator=estimator, n_features_to_select=5),
+        "Greedy SFS"   : SequentialFeatureSelector(estimator=estimator, n_features_to_select=20, cv=3),
+    }
+
+    results = []
+
+    for sel_name, selector in feature_selectors.items():
+        pipe = Pipeline([
+            ("selector", selector),
+            ("clf",      clf),
+        ])
+
+        scores = cross_validate(
+            pipe, X_train, y_train,
+            cv=cv,
+            scoring=["accuracy", "roc_auc", "f1"],
+        )
+
+        results.append({
+            "Feature Selection" : sel_name,
+            "Accuracy"          : scores["test_accuracy"].mean(),
+            "ROC-AUC"           : scores["test_roc_auc"].mean(),
+            "F1"                : scores["test_f1"].mean(),
+        })
+
+    results_df = pd.DataFrame(results)
+    print(results_df)
+    return results_df, X_test, y_test
 
 #%%
 if __name__ == "__main__":
-    X_train, X_test, y_train, y_test, scaler = main()
-
+    results_df, X_test, y_test = main()
 # %%
