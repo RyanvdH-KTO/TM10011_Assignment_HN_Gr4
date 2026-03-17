@@ -1,10 +1,15 @@
 #%%
+import numpy as np
 import pandas as pd
-from hn.load_data import load_data
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
-from hn.load_data import load_data
-
+import matplotlib.pyplot as plt
+from sklearn.feature_selection import VarianceThreshold
+from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import LabelEncoder
+from sklearn.feature_selection import SelectKBest
+from sklearn.feature_selection import f_classif
+from sklearn.feature_selection import RFE
+from sklearn.linear_model import LogisticRegression
+from sklearn.feature_selection import SequentialFeatureSelector
 
 
 #%% Load Data
