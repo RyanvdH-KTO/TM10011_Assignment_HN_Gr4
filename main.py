@@ -3,10 +3,9 @@ import pandas as pd
 from hn.load_data import load_data
 from sklearn.model_selection import train_test_split, GridSearchCV, StratifiedKFold
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
-from hn.load_data import load_data
 from sklearn.pipeline import Pipeline
 from sklearn.linear_model import LogisticRegression
-
+from sklearn.metrics import precision_score, recall_score, f1_score, roc_curve, auc, confusion_matrix, classification_report
 #%% Load Data
 # Load Data
 # data = load_data()
@@ -115,7 +114,7 @@ def preprocess_pipeline(scale_method="standard"):
     print(y.value_counts())
 
     # Train-test split
-    X_train, X_test, y_train, y_test = split_data(X, y)
+    X_train, X_test, y_train, y_test = train_test_split(X, y)
 
     print("Train shape before scaling:", X_train.shape)
     print("Test shape before scaling:", X_test.shape)
@@ -142,10 +141,21 @@ if __name__ == "__main__":
     X_train, X_test, y_train, y_test, scaler = main()
 
 # %% Elastic-Net-Logistic-Regression
-#Elastic-Net-Logistic-Regression
+# Elastic-Net-Logistic-Regression
+
+clas_regres = LogisticRegression(penalty='l1', solver='saga', class_weight='balanced', random_state=42, max_iter=10000)
+clas_regres_trained = clas_regres.fit(X_train, y_train)
+
+y_pred_regres = clas_regres_trained.predict(X_test)
+
+print("Beste score:", clas_regres_trained.best_score_)
+print(f"CL Report of Logistic Regression:",classification_report(y_test, y_pred_regres, zero_division='warn'))
+
+
+#%% pipeline attempt
 
 kf = StratifiedKFold(n_splits=10, shuffle=True, random_state=42)
-preprocessor = X_test, y_test
+preprocessor = X_train, y_train
 
 pipeline_regression = Pipeline(steps=[
     ('preprocessor', preprocessor),
