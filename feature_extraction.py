@@ -92,8 +92,6 @@ X_train_sel, X_test_sel, selected_indices, scores, selector = select_k_best_anov
 )
 
 
-
-
 # %%
 # RFE: recursive feature elimination
 def rfe_selection(X_train, X_test, y_train, estimator, n_features=10):
@@ -112,7 +110,6 @@ def rfe_selection(X_train, X_test, y_train, estimator, n_features=10):
     print("Shape test after selection:", X_test_sel.shape)
 
     return X_train_sel, X_test_sel, selected_indices, ranking, selector
-
 
 # RFE testen met Logistic Regression
 X_train_rfe, X_test_rfe, selected_idx, ranking, selector = rfe_selection(
@@ -183,3 +180,18 @@ def perform_sfs(features_train, label_train, model, n_splits=5):
 
     return sfs, selected_indices
 # %%
+
+
+
+# %% PCA feature selection
+#PCA feature selection pipeline
+from sklearn import decomposition 
+import seaborn
+
+pca = decomposition.PCA(n_components=0.95)
+pca.fit(features_scaled)
+X_pca = pca.transform(features_scaled)
+
+print(X_pca.shape)
+print(pca.explained_variance_ratio_)
+print("Variance:", pca.explained_variance_ratio_)
