@@ -74,7 +74,6 @@ def scale_features(X_train, X_test, method="standard"):
 
 
 #%%
-
 def main():
     # Load Data
     data = load_data()
@@ -114,18 +113,25 @@ def main():
     }
 
     results = []
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 
     for sel_name, selector in feature_selectors.items():
         for clf_name, clf in classifiers.items():
+            
+            selector.fit(X_train_scaled, y_train)
+            selected_indices = selector.get_support(indices=True)
+            selected_names = X.columns[selected_indices].tolist()
+            print(f"\n[{sel_name}] Selected features: {selected_names}")
 
             pipe = Pipeline([
                 ("selector", selector),
                 ("clf",      clf),
             ])
+            
             #Get different cross-validation scores
-            cv = StratifiedKFold(n_splits=5, shuffle=True, cv=cv, random_state=42)
             scores = cross_validate(
                 pipe, X_train_scaled, y_train,
+                cv=cv,
                 scoring=["accuracy", "roc_auc", "f1"],
             )
 
@@ -139,6 +145,8 @@ def main():
 
     results_df = pd.DataFrame(results)
     print(results_df)
+    return results_df, X_test, y_test
+
 
     
 
