@@ -5,6 +5,7 @@ from sklearn.model_selection import train_test_split, GridSearchCV, StratifiedKF
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
 from sklearn.pipeline import Pipeline
 from sklearn.linear_model import LogisticRegression
+from sklearn.cross_decomposition import PLSRegression
 from sklearn.metrics import precision_score, recall_score, f1_score, roc_curve, auc, confusion_matrix, classification_report
 #%% Load Data
 # Load Data
@@ -148,10 +149,30 @@ clas_regres_trained = clas_regres.fit(X_train, y_train)
 
 y_pred_regres = clas_regres_trained.predict(X_test)
 
-print("Beste score:", clas_regres_trained.best_score_)
+#print("Beste score:", clas_regres_trained.best_score_)
 print(f"CL Report of Logistic Regression:",classification_report(y_test, y_pred_regres, zero_division='warn'))
 
+#%% PLS DA
 
+# PLS-DA classifier
+pls_da = PLSRegression(n_components=10, scale=True, max_iter=10000)
+
+# Fit and transform TRAINING - returns TUPLE (X_scores, Y_scores)
+X_train_pls_3d, _ = pls_da.fit_transform(X_train, y_train)
+X_train_pls = X_train_pls_3d.squeeze()  # (n,10,1) → (n,10)
+
+# Transform TEST - returns SINGLE ARRAY (X_scores only)
+X_test_pls_3d = pls_da.transform(X_test)  # NO unpacking needed!
+X_test_pls = X_test_pls_3d.squeeze()      # (n,10,1) → (n,10)
+
+# Logistic regression on PLS latent variables
+clas_pls_da = LogisticRegression(penalty='l1', solver='saga', class_weight='balanced', random_state=42, max_iter=10000)
+clas_pls_da_trained = clas_pls_da.fit(X_train_pls, y_train)
+
+y_pred_pls_da = clas_pls_da_trained.predict(X_test_pls)
+
+print("PLS-DA Training Score:", clas_pls_da_trained.score(X_train_pls, y_train))
+print(f"CL Report of PLS-DA:", classification_report(y_test, y_pred_pls_da, zero_division='warn'))
 #%% pipeline attempt
 
 kf = StratifiedKFold(n_splits=10, shuffle=True, random_state=42)
@@ -171,3 +192,6 @@ grid_search_regression.fit(X_train, y_train)
 
 print('Best parameters found:\n', grid_search_regression.best_params_)
 print("Beste score:", grid_search_regression.best_score_)
+
+
+#%%
