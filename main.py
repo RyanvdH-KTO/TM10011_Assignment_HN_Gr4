@@ -6,6 +6,10 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
 from sklearn.pipeline import Pipeline
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import precision_score, recall_score, f1_score, roc_curve, auc, confusion_matrix, classification_report
+from sklearn.svm import SVC
+import importlib, subprocess, sys; package = "xgboost"; importlib.import_module(package) if importlib.util.find_spec(package) else subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+import xgboost as xgb
+
 #%% Load Data
 # Load Data
 # data = load_data()
@@ -150,6 +154,39 @@ y_pred_regres = clas_regres_trained.predict(X_test)
 
 print("Beste score:", clas_regres_trained.best_score_)
 print(f"CL Report of Logistic Regression:",classification_report(y_test, y_pred_regres, zero_division='warn'))
+
+#%% Lineair Support Vector
+
+class_LSV = SVC(random_state=42, 
+                max_iter=5000, 
+                class_weight='balanced', 
+                kernel = 'linear'
+                )
+
+class_LSV_trained = class_LSV.fit(X_train, y_train)
+
+y_pred_LSV = class_LSV_trained.predict(X_test)
+
+print("Linear Support Vector")
+print(f"CL Report of Logistic Regression:",classification_report(y_test, y_pred_LSV, zero_division='warn'))
+
+
+#%% Gradient Boosting
+
+
+class_XGB = xgb.XGBClassifier(
+    random_state=42,
+    n_estimators=1000,
+    max_depth=10,
+    learning_rate=0.1
+)
+
+class_XGB_trained = class_XGB.fit(X_train, y_train)
+
+y_pred_XGB = class_XGB_trained.predict(X_test)
+
+print('XGradient Boosting')
+print(f"CL Report of Logistic Regression:",classification_report(y_test, y_pred_XGB, zero_division='warn'))
 
 
 #%% pipeline attempt
