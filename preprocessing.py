@@ -6,7 +6,6 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
 from hn.load_data import load_data
 
 
-
 #%% Load Data
 # Load Data
 # data = load_data()
