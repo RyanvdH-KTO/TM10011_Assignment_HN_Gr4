@@ -13,27 +13,10 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.feature_selection import SequentialFeatureSelector
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import StratifiedKFold, cross_validate
+from feature_extraction import select_k_best_anova, rfe_selection, sfs_selection 
+from sklearn.pipeline import Pipeline
 
-
-
-#%% Load Data
-# Load Data
-# data = load_data()
-# print(f'The number of samples: {len(data.index)}')
-# print(f'The number of columns: {len(data.columns)}')
-
-# data = pd.DataFrame(data)
-
-#%%
-def load_dataset():
-    data = load_data()
-    data = pd.DataFrame(data)
-
-    print("Dataset shape:", data.shape)
-    return data
-
-
-# %%
+#%% Function definitions
 # Missing data functie
 def check_missing_values(data):
 
@@ -49,21 +32,14 @@ def check_missing_values(data):
     return missing
 
 
-# %%
 # Data splitten in features (X) en target (y)
 def split_features_target(data, label_col='label'):
     X = data.drop(columns=[label_col]) 
     y = data[label_col]
+    #encode labels: T12 = 0, T34 = 1
+    y = y.map({'T12': 0, 'T34': 1})
     return X, y
 
-
-# %%
-# Encode lables: T12 = 0, T34 = 1
-def encode_labels(y):
-    y_encoded = y.map({'T12': 0, 'T34': 1})
-    return y_encoded
-
-#%%
 # Train test split (stratified)
 def split_data(X, y, test_size=0.2, random_state=42):
     X_train, X_test, y_train, y_test = train_test_split(
@@ -75,7 +51,6 @@ def split_data(X, y, test_size=0.2, random_state=42):
     )
     return X_train, X_test, y_train, y_test
 
-#%%
 # Feature scaling
 # Meerdere scalars vergelijken: kijken welke beste accuracy geeft (en dan bv standard als baseline gebruiken)
 def scale_features(X_train, X_test, method="standard"):
@@ -98,88 +73,82 @@ def scale_features(X_train, X_test, method="standard"):
     return X_train_scaled, X_test_scaled, scaler
 
 
-# %%
-def preprocess_pipeline(scale_method="standard"):
+#%%
 
-    # Load dataset
-    data = load_dataset()
+def main():
+    # Load Data
+    data = load_data()
+    print(f'The number of samples: {len(data.index)}')
+    print(f'The number of columns: {len(data.columns)}')
 
     # Check missing values
     check_missing_values(data)
 
-    # Split features and target
+    #Split dataset into features and encoded labels
     X, y = split_features_target(data)
 
-    print("Feature shape:", X.shape)
-    print("Original label distribution:")
-    print(y.value_counts())
-
-    # Encode labels
-    y = encode_labels(y)
-
-    print("Encoded label distribution:")
-    print(y.value_counts())
-
-    # Train-test split
-    X_train, X_test, y_train, y_test = split_data(X, y)
-
-    print("Train shape before scaling:", X_train.shape)
-    print("Test shape before scaling:", X_test.shape)
-
-    # Feature scaling
-    X_train_scaled, X_test_scaled, scaler = scale_features(
-        X_train, X_test, method=scale_method
+    #Split into train and testset
+    X_train, X_test, y_train, y_test = train_test_split(
+        X,
+        y,
+        test_size=0.2,
+        stratify=y,
+        random_state=42
     )
 
-    print("Final shape training:", X_train_scaled.shape)
-    print("Final shape test:", X_test_scaled.shape)
+    #Scale features
+    X_train_scaled, X_test_scaled, scaler = scale_features(X_train, X_test)
 
-    return X_train_scaled, X_test_scaled, y_train, y_test, scaler
+    print("Train shape:", X_train_scaled.shape)
+    print("Test shape:", X_test_scaled.shape)
+    print("Label distribution training set:\n", y_train.value_counts())
 
-
-#%%
-from feature_extraction import select_k_best_anova, rfe_selection, sfs_selection 
-from sklearn.pipeline import Pipeline
-
-def main():
-    X_train, X_test, y_train, y_test, scaler = preprocess_pipeline(scale_method="standard")
-
-    estimator = LogisticRegression(max_iter=1000, random_state=42)
-    clf = LogisticRegression(max_iter=1000, random_state=42)
-    cv  = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-
+    #Pipeline that compares feature selectors and classifiers
     feature_selectors = {
-        "k best ANOVA" : SelectKBest(score_func=f_classif, k=30),
-        "RFE"          : RFE(estimator=estimator, n_features_to_select=5),
-        "Greedy SFS"   : SequentialFeatureSelector(estimator=estimator, n_features_to_select=20, cv=3),
+        "k best ANOVA" : SelectKBest(score_func=f_classif, k=10),
+        "RFE"          : RFE(estimator=LogisticRegression(max_iter=1000), n_features_to_select=5),
+    }
+
+    classifiers = {
+        "Logistic Regression" : LogisticRegression(max_iter=1000, random_state=42),
     }
 
     results = []
 
     for sel_name, selector in feature_selectors.items():
-        pipe = Pipeline([
-            ("selector", selector),
-            ("clf",      clf),
-        ])
+        for clf_name, clf in classifiers.items():
 
-        scores = cross_validate(
-            pipe, X_train, y_train,
-            cv=cv,
-            scoring=["accuracy", "roc_auc", "f1"],
-        )
+            pipe = Pipeline([
+                ("selector", selector),
+                ("clf",      clf),
+            ])
+            #Get different cross-validation scores
+            cv = StratifiedKFold(n_splits=5, shuffle=True, cv=cv, random_state=42)
+            scores = cross_validate(
+                pipe, X_train_scaled, y_train,
+                scoring=["accuracy", "roc_auc", "f1"],
+            )
 
-        results.append({
-            "Feature Selection" : sel_name,
-            "Accuracy"          : scores["test_accuracy"].mean(),
-            "ROC-AUC"           : scores["test_roc_auc"].mean(),
-            "F1"                : scores["test_f1"].mean(),
-        })
+            results.append({
+                "Feature Selection" : sel_name,
+                "Classifier"        : clf_name,
+                "Accuracy"          : scores["test_accuracy"].mean(),
+                "ROC-AUC"           : scores["test_roc_auc"].mean(),
+                "F1"                : scores["test_f1"].mean(),
+            })
 
     results_df = pd.DataFrame(results)
     print(results_df)
-    return results_df, X_test, y_test
+
+
+
+
+
+    
 
 #%%
 if __name__ == "__main__":
     results_df, X_test, y_test = main()
+
+
 # %%
