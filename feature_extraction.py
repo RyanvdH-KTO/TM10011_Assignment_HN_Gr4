@@ -35,34 +35,33 @@ print(y)
 
 # %% Variance Filtering
 # Try a range of thresholds
-thresholds = np.arange(0.0, 1.0, 0.01)
-n_features_kept = []
+def variance_filter():
+    thresholds = np.arange(0.0, 1.0, 0.01)
+    n_features_kept = []
 
-for t in thresholds:
-    selector = VarianceThreshold(threshold=t)
-    selector.fit(features)
-    n_features_kept.append(selector.get_support().sum())
+    for t in thresholds:
+        selector = VarianceThreshold(threshold=t)
+        selector.fit(features)
+        n_features_kept.append(selector.get_support().sum())
 
-selector = VarianceThreshold(threshold=0.01)
-features_filtered = selector.fit_transform(features)  
+    selector = VarianceThreshold(threshold=0.01)
+    features_filtered = selector.fit_transform(features)  
 
-print(f"Features before : {features.shape[1]}")
-print(f"Features after  : {features_filtered.shape[1]}")
+    print(f"Features before : {features.shape[1]}")
+    print(f"Features after  : {features_filtered.shape[1]}")
 
-# Which features survived? 
-surviving_feature_names = features.columns[selector.get_support()].tolist()
-print(f"\nSurviving features:\n{surviving_feature_names}")
+    # Which features survived? 
+    surviving_feature_names = features.columns[selector.get_support()].tolist()
+    print(f"\nSurviving features:\n{surviving_feature_names}")
 
-# Count surviving features per group
-groups = ["sf", "hf", "tf", "of"]
+    # Count surviving features per group
+    groups = ["sf", "hf", "tf", "of"]
 
-for group in groups:
-    # count how many surviving feature names start with this prefix
-    count = sum(1 for name in surviving_feature_names if name.startswith(group))
-    total = sum(1 for name in features.columns if name.startswith(group))
-    print(f"{group}: {count} / {total} survived")
-
-
+    for group in groups:
+        # count how many surviving feature names start with this prefix
+        count = sum(1 for name in surviving_feature_names if name.startswith(group))
+        total = sum(1 for name in features.columns if name.startswith(group))
+        print(f"{group}: {count} / {total} survived")
 
 
 # %%
