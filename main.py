@@ -93,7 +93,7 @@ def scale_features(X_train, X_test, method="standard"):
     return X_train_scaled, X_test_scaled, scaler
 
 #%%
-def plot_auc(labels, probs_regression):
+def plot_auc(labels, probs_regression, classifier_name):
     # info regression
     fpr_regression = dict()
     tpr_regression = dict()
@@ -102,7 +102,7 @@ def plot_auc(labels, probs_regression):
     roc_auc_regression = auc(fpr_regression, tpr_regression)
     
     plt.figure()
-    plt.plot(fpr_regression, tpr_regression, color = 'blue', label = 'AUC of the Lasso Logistic Regression: %0.3f' % roc_auc_regression, linestyle='solid')
+    plt.plot(fpr_regression, tpr_regression, color = 'blue', label = 'AUC of '+ str(classifier_name) + ': %0.3f' % roc_auc_regression, linestyle='solid')
     plt.plot([0, 1], [0, 1], color = 'grey', linestyle=(0, (5, 10)), label='Random prediction')
     plt.xlim([0.0, 1.0])
     plt.ylim([0.0, 1.])
@@ -199,6 +199,7 @@ grid_search_SVM = GridSearchCV(
     param_grid_SVM,
     cv=kf, 
     scoring='roc_auc', 
+    refit = "roc_auc", 
     n_jobs=-1,
     verbose=3
     )
@@ -219,27 +220,63 @@ y_scores_SVM_trained_handmatig = classifier_SVM_trained_handmatig.decision_funct
 print("Linear Support Vector")
 print(f"CL Report of Logistic Regression:",classification_report(y_test, y_pred_SVM, zero_division='warn'))
 
-plot_auc(y_test, y_scores_SVM)
-plot_auc(y_test, y_scores_SVM_trained_handmatig)
+plot_auc(y_test, y_scores_SVM, 'pipeline SVM')
+plot_auc(y_test, y_scores_SVM_trained_handmatig, 'handmatig SVM')
 
 #%% Gradient Boosting
 
 
-class_XGB = xgb.XGBClassifier(
+classifier_XGB = xgb.XGBClassifier(
     random_state=42,
     n_estimators=1000,
     max_depth=10,
     learning_rate=0.1
     )
 
-class_XGB_trained = class_XGB.fit(X_train, y_train)
-y_pred_XGB = class_XGB_trained.predict(X_test)
+pipeline_XGB = Pipeline(steps=[
+#    ('preprocessor', StandardScaler()),
+    ('classifier', classifier_XGB) 
+])
+
+param_grid_XGB = {
+    'classifier__n_estimators': [100, 300, 500],
+    'classifier__max_depth': [3, 5, 7],
+    'classifier__learning_rate': [0.01, 0.05, 0.1],
+    'classifier__subsample': [0.8, 1.0],
+    'classifier__colsample_bytree': [0.8, 1.0]
+}
+
+grid_search_XGB = GridSearchCV(
+    pipeline_XGB,
+    param_grid_XGB,
+    cv=kf, 
+    scoring='roc_auc', 
+    refit = "roc_auc",
+    n_jobs=-1,
+    verbose=3
+    )
+grid_search_XGB.fit(X_train, y_train) 
+classifier_XGB = grid_search_XGB.best_estimator_ 
+y_pred_XGB = classifier_XGB.predict(X_test)  
+y_scores_XGB = classifier_XGB.predict_proba(X_test)[:, 1]
+
+
+classifier_XGB_trained_handmatig = classifier_XGB = xgb.XGBClassifier(
+    random_state=42,
+    n_estimators=1000,
+    max_depth=10,
+    learning_rate=0.1
+    ).fit(X_train, y_train)
+y_pred_XGB_trained_handmatig = classifier_XGB_trained_handmatig.predict(X_test)
+y_scores_XGB_trained_handmatig = classifier_XGB_trained_handmatig.predict_proba(X_test)[:, 1]
+
+
 
 print('XGradient Boosting')
 print(f"CL Report of Logistic Regression:",classification_report(y_test, y_pred_XGB, zero_division='warn'))
 
-y_scores_XGB = class_XGB.predict_proba(X_test)[:, 1]
-plot_auc(y_test, y_scores_XGB)
+plot_auc(y_test, y_scores_XGB, 'pipeline XGboost')
+plot_auc(y_test, y_scores_XGB_trained_handmatig, 'handmatig XGboost')
 #%% pipeline attempt
 
 kf = StratifiedKFold(n_splits=10, shuffle=True, random_state=42)
