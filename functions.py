@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import seaborn
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
@@ -54,6 +55,27 @@ def scale_features(X_train, X_test, method="standard"):
     X_test_scaled = scaler.transform(X_test)
 
     return X_train_scaled, X_test_scaled, scaler
+
+def remove_correlated_features(X_train, X_test, threshold=0.95):
+    # calculate correlation matrix on train only!
+    corr_matrix = pd.DataFrame(X_train).corr().abs()
+
+    # find upper triangle of correlation matrix
+    upper = corr_matrix.where(
+        np.triu(np.ones(corr_matrix.shape), k=1).astype(bool)
+    )
+
+    # find columns where correlation exceeds threshold
+    to_drop = [col for col in upper.columns if any(upper[col] > threshold)]
+
+    print(f"Removing {len(to_drop)} correlated features")
+    print(f"Features remaining: {X_train.shape[1] - len(to_drop)}")
+
+    # drop from both train and test
+    X_train_filtered = pd.DataFrame(X_train).drop(columns=to_drop).values
+    X_test_filtered = pd.DataFrame(X_test).drop(columns=to_drop).values
+
+    return X_train_filtered, X_test_filtered
 
 #%% Feature selectors
 
