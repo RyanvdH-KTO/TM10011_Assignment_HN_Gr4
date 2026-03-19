@@ -14,7 +14,8 @@ from sklearn.feature_selection import SequentialFeatureSelector
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import StratifiedKFold, cross_validate
 from sklearn.pipeline import Pipeline
-from functions import check_missing_values, split_features_target, scale_features, select_k_best_anova, rfe_selection, sfs_selection, pca_selection, remove_correlated_features, plot_correlation_matrix 
+from functions import check_missing_values, split_features_target, scale_features, select_k_best_anova, rfe_selection, sfs_selection, pca_selection, remove_correlated_features
+from functions import plot_correlation_matrix
 
 #%%
 def main():
@@ -46,11 +47,11 @@ def main():
     print("Label distribution training set:\n", y_train.value_counts())
 
     #Covariance feature elimination
-    X_train_filtered, X_test_filtered = remove_correlated_features(X_train_scaled, X_test_scaled)
+    X_train_filtered, X_test_filtered, to_drop = remove_correlated_features(X_train_scaled, X_test_scaled)
     print(X_train_scaled)
 
     #Plot the correlation matrix
-    plot_correlation_matrix(X_train_scaled, feature_names=X.columns.tolist())
+    plot_correlation_matrix(to_drop, feature_names=X.columns.tolist())
 
     #%% Logistic Regression Classifier
     # Logistic Regression Classifier

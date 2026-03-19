@@ -78,7 +78,7 @@ def remove_correlated_features(X_train, X_test, threshold=0.95):
     X_train_filtered = pd.DataFrame(X_train).drop(columns=to_drop).values
     X_test_filtered = pd.DataFrame(X_test).drop(columns=to_drop).values
 
-    return X_train_filtered, X_test_filtered
+    return X_train_filtered, X_test_filtered, to_drop
 
 def plot_correlation_matrix(X_train, feature_names=None):
     corr_matrix = pd.DataFrame(X_train, columns=feature_names).corr().abs()
