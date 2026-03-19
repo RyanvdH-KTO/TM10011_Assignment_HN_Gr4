@@ -127,7 +127,6 @@ def sfs_selection(X_train, X_test, y_train, estimator, n_features=10, direction=
     return X_train_sel, X_test_sel
 
 #PCA feature selection 
-
 def pca_selection(X_train, X_test, n_components=0.95):
     pca = PCA(n_components=n_components)
     
