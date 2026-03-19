@@ -49,52 +49,25 @@ def main():
     X_train_filtered, X_test_filtered = remove_correlated_features(X_train_scaled, X_test_scaled)
     print(X_train_scaled)
 
-    #Pipeline that compares feature selectors and classifiers
-    feature_selectors = {
-        "k best ANOVA" : SelectKBest(score_func=f_classif, k=10),
-        "RFE"          : RFE(estimator=LogisticRegression(max_iter=1000), n_features_to_select=5),
-    }
+    #%% Logistic Regression Classifier
+    # Logistic Regression Classifier
+    '''Needs feature selection beforehand, so we compare different methods to be able to use the best in the pipeline'''
 
-    classifiers = {
-        "Logistic Regression" : LogisticRegression(max_iter=1000, random_state=42),
-    }
+    #%% SVM classifier
+    #SVM classifier
+    '''Needs feature selection beforehand, so we compare different methods to be able to use the best in the pipeline'''
 
-    # results = []
-    # cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 
-    # for sel_name, selector in feature_selectors.items():
-    #     for clf_name, clf in classifiers.items():
-            
-    #         selector.fit(X_train_scaled, y_train)
-    #         selected_indices = selector.get_support(indices=True)
-    #         selected_names = X.columns[selected_indices].tolist()
-    #         print(f"\n[{sel_name}] Selected features: {selected_names}")
+    #%% XGBoost Classifier
+    #XGBoost Classifier
+    '''Doesn't need further feature selection, since this method handles that itself'''
 
-    #         pipe = Pipeline([
-    #             ("selector", selector),
-    #             ("clf",      clf),
-    #         ])
-            
-    #         #Get different cross-validation scores
-    #         scores = cross_validate(
-    #             pipe, X_train_scaled, y_train,
-    #             cv=cv,
-    #             scoring=["accuracy", "roc_auc", "f1"], 
-    #             n_jobs=-1
-    #         )
+    #%% Partial Least Square classifer
+    #PLS classifier
+    '''Doesn't need further feature selection, since this method handles that itself'''
 
-    #         results.append({
-    #             "Feature Selection" : sel_name,
-    #             "Classifier"        : clf_name,
-    #             "Accuracy"          : scores["test_accuracy"].mean(),
-    #             "ROC-AUC"           : scores["test_roc_auc"].mean(),
-    #             "F1"                : scores["test_f1"].mean(),
-    #         })
 
-    # results_df = pd.DataFrame(results)
-    # print(results_df)
-    # return results_df, X_test, y_test
-
+    #%% Classifier Evaluation 
 
 #%%
 if __name__ == "__main__":
