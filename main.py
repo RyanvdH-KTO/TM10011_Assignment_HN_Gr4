@@ -14,7 +14,7 @@ from sklearn.feature_selection import SequentialFeatureSelector
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import StratifiedKFold, cross_validate
 from sklearn.pipeline import Pipeline
-from functions import check_missing_values, split_features_target, scale_features, select_k_best_anova, rfe_selection, sfs_selection, pca_selection 
+from functions import check_missing_values, split_features_target, scale_features, select_k_best_anova, rfe_selection, sfs_selection, pca_selection, remove_correlated_features 
 
 #%%
 def main():
@@ -46,6 +46,8 @@ def main():
     print("Label distribution training set:\n", y_train.value_counts())
 
     #Covariance feature elimination
+    X_train_filtered, X_test_filtered = remove_correlated_features(X_train_scaled, X_test_scaled)
+    print(X_train_scaled)
 
     #Pipeline that compares feature selectors and classifiers
     feature_selectors = {
@@ -57,48 +59,46 @@ def main():
         "Logistic Regression" : LogisticRegression(max_iter=1000, random_state=42),
     }
 
-    results = []
-    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    # results = []
+    # cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 
-    for sel_name, selector in feature_selectors.items():
-        for clf_name, clf in classifiers.items():
+    # for sel_name, selector in feature_selectors.items():
+    #     for clf_name, clf in classifiers.items():
             
-            selector.fit(X_train_scaled, y_train)
-            selected_indices = selector.get_support(indices=True)
-            selected_names = X.columns[selected_indices].tolist()
-            print(f"\n[{sel_name}] Selected features: {selected_names}")
+    #         selector.fit(X_train_scaled, y_train)
+    #         selected_indices = selector.get_support(indices=True)
+    #         selected_names = X.columns[selected_indices].tolist()
+    #         print(f"\n[{sel_name}] Selected features: {selected_names}")
 
-            pipe = Pipeline([
-                ("selector", selector),
-                ("clf",      clf),
-            ])
+    #         pipe = Pipeline([
+    #             ("selector", selector),
+    #             ("clf",      clf),
+    #         ])
             
-            #Get different cross-validation scores
-            scores = cross_validate(
-                pipe, X_train_scaled, y_train,
-                cv=cv,
-                scoring=["accuracy", "roc_auc", "f1"], 
-                n_jobs=-1
-            )
+    #         #Get different cross-validation scores
+    #         scores = cross_validate(
+    #             pipe, X_train_scaled, y_train,
+    #             cv=cv,
+    #             scoring=["accuracy", "roc_auc", "f1"], 
+    #             n_jobs=-1
+    #         )
 
-            results.append({
-                "Feature Selection" : sel_name,
-                "Classifier"        : clf_name,
-                "Accuracy"          : scores["test_accuracy"].mean(),
-                "ROC-AUC"           : scores["test_roc_auc"].mean(),
-                "F1"                : scores["test_f1"].mean(),
-            })
+    #         results.append({
+    #             "Feature Selection" : sel_name,
+    #             "Classifier"        : clf_name,
+    #             "Accuracy"          : scores["test_accuracy"].mean(),
+    #             "ROC-AUC"           : scores["test_roc_auc"].mean(),
+    #             "F1"                : scores["test_f1"].mean(),
+    #         })
 
-    results_df = pd.DataFrame(results)
-    print(results_df)
-    return results_df, X_test, y_test
+    # results_df = pd.DataFrame(results)
+    # print(results_df)
+    # return results_df, X_test, y_test
 
-
-    
 
 #%%
 if __name__ == "__main__":
-    results_df, X_test, y_test = main()
+    main()
 
 
 # %%
