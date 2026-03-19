@@ -45,6 +45,8 @@ def main():
     print("Test shape:", X_test_scaled.shape)
     print("Label distribution training set:\n", y_train.value_counts())
 
+    # Covariance feature elimination
+
     #Pipeline that compares feature selectors and classifiers
     feature_selectors = {
         "k best ANOVA" : SelectKBest(score_func=f_classif, k=10),
