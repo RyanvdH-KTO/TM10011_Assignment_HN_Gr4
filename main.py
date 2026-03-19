@@ -173,24 +173,49 @@ y_pred_regres = clas_regres_trained.predict(X_test)
 #print("Beste score:", clas_regres_trained.best_score_)
 print(f"CL Report of Logistic Regression:",classification_report(y_test, y_pred_regres, zero_division='warn'))
 
-#%% Lineair Support Vector
+#%% pipeline parameters
+preprocessor = StandardScaler()
+kf = StratifiedKFold(n_splits=10, shuffle=True, random_state=42)
 
-class_LSV = SVC(random_state=42, 
-                max_iter=5000, 
-                class_weight='balanced', 
-                kernel = 'linear'
-                )
+#%% (Lineair) Support Vector Machine
+classifier_SVM = SVC(random_state=42, 
+                     max_iter=5000, 
+                     class_weight='balanced', 
+                     kernel = 'linear'
+                     )
 
-class_LSV_trained = class_LSV.fit(X_train, y_train)
+pipeline_SVM = Pipeline(steps=[
+    ('preprocessor', preprocessor),
+    ('classifier', classifier_SVM) 
+])
 
-y_pred_LSV = class_LSV_trained.predict(X_test)
+param_grid_SVM = {
+    'classifier__kernel': ['linear', 'poly', 'rbf', 'sigmoid' ],
+    'classifier__C': [0.001, 0.01, 1, 10],
+    'classifier__gamma':['auto', 'scale']
+}
+
+grid_search_SVM = GridSearchCV(
+    pipeline_SVM,
+    param_grid_SVM,
+    cv=kf, 
+    scoring='roc_auc', 
+    n_jobs=-1,
+    verbose=3
+    )
+grid_search_SVM.fit(X_train, y_train) 
+classifier_SVM = grid_search_SVM.best_estimator_ 
+y_pred_SVM = classifier_SVM.predict(X_test)  
+
+#classifier_SVM_trained = classifier_SVM.fit(X_train, y_train)
+#y_pred_SVM = classifier_SVM_trained.predict(X_test)
 
 
 print("Linear Support Vector")
-print(f"CL Report of Logistic Regression:",classification_report(y_test, y_pred_LSV, zero_division='warn'))
+print(f"CL Report of Logistic Regression:",classification_report(y_test, y_pred_SVM, zero_division='warn'))
 
-y_scores_LSV = class_LSV.decision_function(X_test)
-plot_auc(y_test, y_scores_LSV)
+y_scores_SVM = classifier_SVM.decision_function(X_test)
+plot_auc(y_test, y_scores_SVM)
 
 #%% Gradient Boosting
 
@@ -200,10 +225,9 @@ class_XGB = xgb.XGBClassifier(
     n_estimators=1000,
     max_depth=10,
     learning_rate=0.1
-)
+    )
 
 class_XGB_trained = class_XGB.fit(X_train, y_train)
-
 y_pred_XGB = class_XGB_trained.predict(X_test)
 
 print('XGradient Boosting')
