@@ -35,17 +35,6 @@ def split_features_target(data, label_col='label'):
     y = y.map({'T12': 0, 'T34': 1})
     return X, y
 
-# Train test split (stratified)
-def split_data(X, y, test_size=0.2, random_state=42):
-    X_train, X_test, y_train, y_test = train_test_split(
-        X,
-        y,
-        test_size=test_size,
-        stratify=y,
-        random_state=random_state
-    )
-    return X_train, X_test, y_train, y_test
-
 # Feature scaling
 def scale_features(X_train, X_test, method="standard"):
 
