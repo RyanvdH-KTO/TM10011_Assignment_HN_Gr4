@@ -80,8 +80,12 @@ def remove_correlated_features(X_train, X_test, threshold=0.95):
 
     return X_train_filtered, X_test_filtered, to_drop
 
-def plot_correlation_matrix(X_train, feature_names=None):
-    corr_matrix = pd.DataFrame(X_train, columns=feature_names).corr().abs()
+def plot_correlation_matrix(X_train, to_drop, feature_names=None):
+    df = pd.DataFrame(X_train, columns=feature_names)
+    
+    # only keep the columns that will be dropped
+    df_dropped = df[to_drop]
+    corr_matrix = df_dropped.corr().abs()
 
     plt.figure(figsize=(12, 10))
     sns.heatmap(
@@ -93,7 +97,7 @@ def plot_correlation_matrix(X_train, feature_names=None):
         linewidths=0,
         cbar_kws={"shrink": 0.8, "label": "Absolute Correlation"},
     )
-    plt.title("Feature Correlation Matrix", fontsize=14, fontweight="bold")
+    plt.title("Correlation Matrix — Dropped Features", fontsize=14, fontweight="bold")
     plt.tight_layout()
     plt.savefig("correlation_matrix.png", dpi=150, bbox_inches="tight")
     plt.show()
