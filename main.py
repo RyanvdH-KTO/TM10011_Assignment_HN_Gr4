@@ -141,16 +141,33 @@ def main():
 if __name__ == "__main__":
     X_train, X_test, y_train, y_test, scaler = main()
 
+
+
+
 # %% Elastic-Net-Logistic-Regression
 # Elastic-Net-Logistic-Regression
 
-clas_regres = LogisticRegression(penalty='l1', solver='saga', class_weight='balanced', random_state=42, max_iter=10000)
-clas_regres_trained = clas_regres.fit(X_train, y_train)
+preprocessor = StandardScaler()
+kf = StratifiedKFold(n_splits=10, shuffle=True, random_state=42)
 
-y_pred_regres = clas_regres_trained.predict(X_test)
+pipeline_regression = Pipeline(steps=[
+    ('preprocessor', preprocessor),
+    ('classifier', LogisticRegression(penalty='elasticnet', solver='saga', class_weight='balanced', random_state=42, max_iter=10000))
+])
 
-#print("Beste score:", clas_regres_trained.best_score_)
-print(f"CL Report of Logistic Regression:",classification_report(y_test, y_pred_regres, zero_division='warn'))
+param_grid_regression = {
+    'classifier__C': [0.001, 0.01, 0.1, 1, 10]
+}
+
+grid_search_regression = GridSearchCV(pipeline_regression, param_grid_regression, cv=kf, scoring='roc_auc', n_jobs=-1)
+grid_search_regression.fit(X_train, y_train)
+
+print('Best parameters found:\n', grid_search_regression.best_params_)
+print("Beste score:", grid_search_regression.best_score_)
+regression_model = grid_search_regression.best_estimator_ 
+y_pred_regression = regression_model.predict(X_test) 
+print(f"CL Report of PLS-DA:", classification_report(y_test, y_pred_pls_da, zero_division='warn'))
+
 
 #%% PLS DA
 
@@ -173,6 +190,20 @@ y_pred_pls_da = clas_pls_da_trained.predict(X_test_pls)
 
 print("PLS-DA Training Score:", clas_pls_da_trained.score(X_train_pls, y_train))
 print(f"CL Report of PLS-DA:", classification_report(y_test, y_pred_pls_da, zero_division='warn'))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #%% pipeline attempt
 
 kf = StratifiedKFold(n_splits=10, shuffle=True, random_state=42)
