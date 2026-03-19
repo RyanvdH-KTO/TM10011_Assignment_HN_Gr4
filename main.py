@@ -13,65 +13,8 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.feature_selection import SequentialFeatureSelector
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import StratifiedKFold, cross_validate
-from feature_extraction import select_k_best_anova, rfe_selection, sfs_selection 
 from sklearn.pipeline import Pipeline
-
-#%% Function definitions
-# Missing data functie
-def check_missing_values(data):
-
-    missing = data.isnull().sum()
-    missing = missing[missing > 0]
-
-    if missing.empty:
-        print("No missing data")
-    else:
-        print("Missing values per column:")
-        print(missing)
-
-    return missing
-
-
-# Data splitten in features (X) en target (y)
-def split_features_target(data, label_col='label'):
-    X = data.drop(columns=[label_col]) 
-    y = data[label_col]
-    #encode labels: T12 = 0, T34 = 1
-    y = y.map({'T12': 0, 'T34': 1})
-    return X, y
-
-# Train test split (stratified)
-def split_data(X, y, test_size=0.2, random_state=42):
-    X_train, X_test, y_train, y_test = train_test_split(
-        X,
-        y,
-        test_size=test_size,
-        stratify=y,
-        random_state=random_state
-    )
-    return X_train, X_test, y_train, y_test
-
-# Feature scaling
-# Meerdere scalars vergelijken: kijken welke beste accuracy geeft (en dan bv standard als baseline gebruiken)
-def scale_features(X_train, X_test, method="standard"):
-
-    if method == "standard":
-        scaler = StandardScaler()
-
-    elif method == "minmax":
-        scaler = MinMaxScaler()
-
-    elif method == "robust":
-        scaler = RobustScaler()
-
-    else:
-        raise ValueError("Unknown scaler")
-
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled = scaler.transform(X_test)
-
-    return X_train_scaled, X_test_scaled, scaler
-
+from functions import check_missing_values, split_features_target, scale_features, select_k_best_anova, rfe_selection, sfs_selection, pca_selection 
 
 #%%
 def main():
@@ -132,7 +75,8 @@ def main():
             scores = cross_validate(
                 pipe, X_train_scaled, y_train,
                 cv=cv,
-                scoring=["accuracy", "roc_auc", "f1"],
+                scoring=["accuracy", "roc_auc", "f1"], 
+                n_jobs=-1
             )
 
             results.append({
