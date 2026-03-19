@@ -13,28 +13,35 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.feature_selection import SequentialFeatureSelector
 from preprocessing import preprocess_pipeline
 from sklearn.svm import SVC
+from sklearn.feature_selection import SelectFromModel
+from sklearn.ensemble import RandomForestClassifier
+
+#%%
+# Pre-processing call
+X_train, X_test, y_train, y_test, scaler = preprocess_pipeline(scale_method="standard")
+
 
 
 #%% Import and select data
-#Import and select data
-from hn.load_data import load_data
-data = load_data()
+# #Import and select data
+# from hn.load_data import load_data
+# data = load_data()
 
-# Separate features from label
-features = data.drop(columns=["label"])  # everything except the label
-target_vector = data["label"]            # just the label column
+# # Separate features from label
+# features = data.drop(columns=["label"])  # everything except the label
+# target_vector = data["label"]            # just the label column
 
-print(target_vector)
+# print(target_vector)
 
-#%% Scalar
-#Scale the features 
-scaler = StandardScaler()
-features_scaled = scaler.fit_transform(features)
-le = LabelEncoder()
-y = le.fit_transform(target_vector) 
+# #%% Scalar
+# #Scale the features 
+# scaler = StandardScaler()
+# features_scaled = scaler.fit_transform(features)
+# le = LabelEncoder()
+# y = le.fit_transform(target_vector) 
 
-print(features_scaled)
-print(y)
+# print(features_scaled)
+# print(y)
 
 # %% Variance Filtering
 # Try a range of thresholds
@@ -87,9 +94,6 @@ def select_k_best_anova(X_train, X_test, y_train, k=10): #k zegt hoeveel feature
     return X_train_sel, X_test_sel, selected_indices, scores, selector
 
 
-from preprocessing import preprocess_pipeline
-X_train, X_test, y_train, y_test, scaler = preprocess_pipeline(scale_method="standard")
-
 X_train_sel, X_test_sel, selected_indices, scores, selector = select_k_best_anova(
     X_train, X_test, y_train, k=10
 )
@@ -128,37 +132,35 @@ X_train_rfe, X_test_rfe, selected_idx, ranking, selector = rfe_selection(
 
 
 # %%
-# Sequential Feature Selector
+# Sequential Feature Selector (SFS)
 def sfs_selection(
     X_train,
     X_test,
     y_train,
     estimator,
-    tol,
-    direction,
-    scoring,
-    cv
+    tol=0.01,
+    direction="forward",
+    scoring="accuracy",
+    cv=5
 ):
     selector = SequentialFeatureSelector(
-    estimator=estimator,
-    n_features_to_select="auto",
-    tol=tol,
-    direction=direction,
-    scoring=scoring,
-    cv=cv,
-    n_jobs=-1
-)
+        estimator=estimator,
+        n_features_to_select="auto",
+        tol=tol,
+        direction=direction,
+        scoring=scoring,
+        cv=cv,
+        n_jobs=-1
+    )
 
-    # Fit alleen op train
     selector.fit(X_train, y_train)
 
-    # Daarna transform train + test
     X_train_sel = selector.transform(X_train)
     X_test_sel = selector.transform(X_test)
 
     selected_indices = selector.get_support(indices=True)
 
-    print("Selected feature indices sfs:", selected_indices)
+    print("Selected feature indices:", selected_indices)
     print("Number of selected features:", len(selected_indices))
     print("Shape train after selection:", X_train_sel.shape)
     print("Shape test after selection:", X_test_sel.shape)
@@ -166,10 +168,9 @@ def sfs_selection(
     return X_train_sel, X_test_sel, selected_indices, selector
 
 
+
 # %%
 # SFS testen met modellen
-# X_train, X_test, y_train, y_test, scaler = preprocess_pipeline(scale_method="standard")
-
 lr_model = LogisticRegression(max_iter=1000, random_state=42)
 svm_model = SVC(kernel="linear", probability=True)
 
@@ -186,6 +187,30 @@ X_train_sfs, X_test_sfs, selected_idx, selector = sfs_selection(
 )
 
 # %%
+# Tree-based feature selection
+def tree_based_selection(X_train, X_test, y_train, threshold="median"):
+    estimator = RandomForestClassifier(n_estimators=100, random_state=42)
+    selector = SelectFromModel(estimator=estimator, threshold=threshold)
+
+    X_train_sel = selector.fit_transform(X_train, y_train)
+    X_test_sel = selector.transform(X_test)
+
+    selected_indices = selector.get_support(indices=True)
+
+    print("Selected feature indices tree-based:", selected_indices)
+    print("Number of selected features:", len(selected_indices))
+    print("Shape train after selection:", X_train_sel.shape)
+    print("Shape test after selection:", X_test_sel.shape)
+
+    return X_train_sel, X_test_sel, selected_indices, selector
+
+# %%
+# tree based testen
+X_train_tree, X_test_tree, selected_idx, selector = tree_based_selection(
+    X_train=X_train,
+    X_test=X_test,
+    y_train=y_train
+)
 
 
 
