@@ -9,7 +9,7 @@ from sklearn.metrics import precision_score, recall_score, f1_score, roc_curve, 
 from sklearn.svm import SVC
 import importlib, subprocess, sys; package = "xgboost"; importlib.import_module(package) if importlib.util.find_spec(package) else subprocess.check_call([sys.executable, "-m", "pip", "install", package])
 import xgboost as xgb
-
+import matplotlib.pyplot as plt
 #%% Load Data
 # Load Data
 # data = load_data()
@@ -92,7 +92,25 @@ def scale_features(X_train, X_test, method="standard"):
 
     return X_train_scaled, X_test_scaled, scaler
 
-
+#%%
+def plot_auc(labels, probs_regression):
+    # info regression
+    fpr_regression = dict()
+    tpr_regression = dict()
+    roc_auc_regression = dict()
+    fpr_regression, tpr_regression, _ = roc_curve(labels.values.ravel(), probs_regression.ravel())
+    roc_auc_regression = auc(fpr_regression, tpr_regression)
+    
+    plt.figure()
+    plt.plot(fpr_regression, tpr_regression, color = 'blue', label = 'AUC of the Lasso Logistic Regression: %0.3f' % roc_auc_regression, linestyle='solid')
+    plt.plot([0, 1], [0, 1], color = 'grey', linestyle=(0, (5, 10)), label='Random prediction')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.])
+    plt.xlabel('False Positive Rate (FPR)')
+    plt.ylabel('True Positive Rate (TPR)')
+    plt.title('ROC of different models using EHR data')
+    plt.legend()
+    plt.show()
 
 # %%
 
@@ -152,7 +170,7 @@ clas_regres_trained = clas_regres.fit(X_train, y_train)
 
 y_pred_regres = clas_regres_trained.predict(X_test)
 
-print("Beste score:", clas_regres_trained.best_score_)
+#print("Beste score:", clas_regres_trained.best_score_)
 print(f"CL Report of Logistic Regression:",classification_report(y_test, y_pred_regres, zero_division='warn'))
 
 #%% Lineair Support Vector
@@ -167,9 +185,12 @@ class_LSV_trained = class_LSV.fit(X_train, y_train)
 
 y_pred_LSV = class_LSV_trained.predict(X_test)
 
+
 print("Linear Support Vector")
 print(f"CL Report of Logistic Regression:",classification_report(y_test, y_pred_LSV, zero_division='warn'))
 
+y_scores_LSV = class_LSV.decision_function(X_test)
+plot_auc(y_test, y_scores_LSV)
 
 #%% Gradient Boosting
 
@@ -188,7 +209,8 @@ y_pred_XGB = class_XGB_trained.predict(X_test)
 print('XGradient Boosting')
 print(f"CL Report of Logistic Regression:",classification_report(y_test, y_pred_XGB, zero_division='warn'))
 
-
+y_scores_XGB = class_XGB.predict_proba(X_test)[:, 1]
+plot_auc(y_test, y_scores_XGB)
 #%% pipeline attempt
 
 kf = StratifiedKFold(n_splits=10, shuffle=True, random_state=42)
