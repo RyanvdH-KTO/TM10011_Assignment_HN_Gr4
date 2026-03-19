@@ -47,8 +47,8 @@ def main():
     print("Label distribution training set:\n", y_train.value_counts())
 
     #Covariance feature elimination
-    X_train_filtered, X_test_filtered, to_drop = remove_correlated_features(X_train_scaled, X_test_scaled)
-    print(X_train_scaled)
+    X_train_filtered, X_test_filtered, to_drop= remove_correlated_features(X_train_scaled, X_test_scaled)
+    print(X_train_filtered)
 
     #Plot the correlation matrix
     plot_correlation_matrix(to_drop, feature_names=X.columns.tolist())
