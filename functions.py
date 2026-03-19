@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
 import seaborn
+import matplotlib.pyplot as plt
+import seaborn as sns
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
 from sklearn.feature_selection import VarianceThreshold
@@ -12,6 +14,7 @@ from sklearn.feature_selection import RFE
 from sklearn.linear_model import LogisticRegression
 from sklearn.feature_selection import SequentialFeatureSelector
 from sklearn.decomposition import PCA
+
 
 
 # Missing data functie
@@ -76,6 +79,24 @@ def remove_correlated_features(X_train, X_test, threshold=0.95):
     X_test_filtered = pd.DataFrame(X_test).drop(columns=to_drop).values
 
     return X_train_filtered, X_test_filtered
+
+def plot_correlation_matrix(X_train, feature_names=None):
+    corr_matrix = pd.DataFrame(X_train, columns=feature_names).corr().abs()
+
+    plt.figure(figsize=(12, 10))
+    sns.heatmap(
+        corr_matrix,
+        cmap="coolwarm",
+        center=0,
+        vmin=0, vmax=1,
+        square=True,
+        linewidths=0,
+        cbar_kws={"shrink": 0.8, "label": "Absolute Correlation"},
+    )
+    plt.title("Feature Correlation Matrix", fontsize=14, fontweight="bold")
+    plt.tight_layout()
+    plt.savefig("correlation_matrix.png", dpi=150, bbox_inches="tight")
+    plt.show()
 
 #%% Feature selectors
 
