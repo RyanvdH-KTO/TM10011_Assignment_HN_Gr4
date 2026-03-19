@@ -5,6 +5,7 @@ from sklearn.model_selection import train_test_split, GridSearchCV, StratifiedKF
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
 from sklearn.pipeline import Pipeline
 from sklearn.linear_model import LogisticRegression
+import matplotlib.pyplot as plt
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.metrics import precision_score, recall_score, f1_score, roc_curve, auc, confusion_matrix, classification_report
 #%% Load Data
@@ -142,8 +143,27 @@ if __name__ == "__main__":
     X_train, X_test, y_train, y_test, scaler = main()
 
 
-
-
+#%%
+# plot
+def plot_auc(labels, probs_regression):
+    # info regression
+    fpr_regression = dict()
+    tpr_regression = dict()
+    roc_auc_regression = dict()
+    fpr_regression, tpr_regression, _ = roc_curve(labels.values.ravel(), probs_regression.ravel())
+    roc_auc_regression = auc(fpr_regression, tpr_regression)
+    
+    plt.figure()
+    plt.plot(fpr_regression, tpr_regression, color = 'blue', label = 'AUC of the Lasso Logistic Regression: %0.3f' % roc_auc_regression, linestyle='solid')
+    plt.plot([0, 1], [0, 1], color = 'grey', linestyle=(0, (5, 10)), label='Random prediction')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.])
+    plt.xlabel('False Positive Rate (FPR)')
+    plt.ylabel('True Positive Rate (TPR)')
+    plt.title('ROC of different models using EHR data')
+    plt.legend()
+    plt.show()
+    
 # %% Elastic-Net-Logistic-Regression
 # Elastic-Net-Logistic-Regression
 
@@ -167,6 +187,10 @@ print("Beste score:", grid_search_regression.best_score_)
 regression_model = grid_search_regression.best_estimator_ 
 y_pred_regression = regression_model.predict(X_test) 
 print(f"CL Report of PLS-DA:", classification_report(y_test, y_pred_pls_da, zero_division='warn'))
+
+
+
+
 
 
 #%% PLS DA
