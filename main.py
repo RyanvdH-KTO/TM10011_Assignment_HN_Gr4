@@ -189,17 +189,20 @@ pipeline_SVM = Pipeline(steps=[
 ])
 
 param_grid_SVM = {
-    'classifier__kernel': ['linear', 'poly', 'rbf', 'sigmoid' ],
-    'classifier__C': [0.0001, 0.001, 0.01, 1, 10, 100, 1000],
-    'classifier__gamma':['auto', 'scale', 0.0001, 0.001, 0.01, 1, 10, 100, 1000]
+    'classifier__kernel': ['linear', 'poly', 'rbf', 'sigmoid'],
+    'classifier__C': [0.0001, 0.001, 0.01, 1, 5, 10, 100, 1000],
+    'classifier__gamma':['auto', 'scale', 0.0001, 0.001, 0.01, 1, 10, 100, 1000],
+    'classifier__class_weight': ['none', 'balanced'],
+    'classifier__shrinking':[True, False],
+    'classifier__tol':[1, 0.1, 1e-2, 1e-3, 1e-4]
 }
 
 grid_search_SVM = GridSearchCV(
     pipeline_SVM,
     param_grid_SVM,
     cv=kf, 
-    scoring='roc_auc', 
-    refit = "roc_auc", 
+    scoring={'roc_auc': 'roc_auc', 'f1': 'f1', 'accuracy': 'accuracy'},
+    refit = "roc_auc",  
     n_jobs=-1,
     verbose=3
     )
@@ -217,10 +220,11 @@ classifier_SVM_trained_handmatig = SVC(random_state=42,
 y_pred_SVM_trained_handmatig = classifier_SVM_trained_handmatig.predict(X_test)
 y_scores_SVM_trained_handmatig = classifier_SVM_trained_handmatig.decision_function(X_test)
 
-print("Linear Support Vector")
+print("Support Vector Machine")
 print(f"CL Report of Logistic Regression:",classification_report(y_test, y_pred_SVM, zero_division='warn'))
 
 plot_auc(y_test, y_scores_SVM, 'pipeline SVM')
+print(grid_search_SVM.best_params_)
 plot_auc(y_test, y_scores_SVM_trained_handmatig, 'handmatig SVM')
 
 #%% Gradient Boosting
@@ -250,7 +254,7 @@ grid_search_XGB = GridSearchCV(
     pipeline_XGB,
     param_grid_XGB,
     cv=kf, 
-    scoring='roc_auc', 
+    scoring={'roc_auc': 'roc_auc', 'f1': 'f1', 'accuracy': 'accuracy'}, 
     refit = "roc_auc",
     n_jobs=-1,
     verbose=3
