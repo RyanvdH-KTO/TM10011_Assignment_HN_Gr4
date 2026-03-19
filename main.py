@@ -188,7 +188,11 @@ regression_model = grid_search_regression.best_estimator_
 y_pred_regression = regression_model.predict(X_test) 
 print(f"CL Report of PLS-DA:", classification_report(y_test, y_pred_pls_da, zero_division='warn'))
 
+class_XGB_trained = grid_search_regression
 
+y_pred_XGB = class_XGB_trained.predict(X_test)
+y_scores_XGB = class_XGB.predict_proba(X_test)[:, 1]
+plot_auc(y_test, y_scores_XGB)
 
 
 
