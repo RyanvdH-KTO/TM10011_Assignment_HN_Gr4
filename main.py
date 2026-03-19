@@ -174,7 +174,6 @@ y_pred_regres = clas_regres_trained.predict(X_test)
 print(f"CL Report of Logistic Regression:",classification_report(y_test, y_pred_regres, zero_division='warn'))
 
 #%% pipeline parameters
-preprocessor = StandardScaler()
 kf = StratifiedKFold(n_splits=10, shuffle=True, random_state=42)
 
 #%% (Lineair) Support Vector Machine
@@ -185,14 +184,14 @@ classifier_SVM = SVC(random_state=42,
                      )
 
 pipeline_SVM = Pipeline(steps=[
-    ('preprocessor', preprocessor),
+#    ('preprocessor', StandardScaler()),
     ('classifier', classifier_SVM) 
 ])
 
 param_grid_SVM = {
     'classifier__kernel': ['linear', 'poly', 'rbf', 'sigmoid' ],
-    'classifier__C': [0.001, 0.01, 1, 10],
-    'classifier__gamma':['auto', 'scale']
+    'classifier__C': [0.0001, 0.001, 0.01, 1, 10, 100, 1000],
+    'classifier__gamma':['auto', 'scale', 0.0001, 0.001, 0.01, 1, 10, 100, 1000]
 }
 
 grid_search_SVM = GridSearchCV(
@@ -206,16 +205,22 @@ grid_search_SVM = GridSearchCV(
 grid_search_SVM.fit(X_train, y_train) 
 classifier_SVM = grid_search_SVM.best_estimator_ 
 y_pred_SVM = classifier_SVM.predict(X_test)  
+y_scores_SVM = classifier_SVM.decision_function(X_test)
 
-#classifier_SVM_trained = classifier_SVM.fit(X_train, y_train)
-#y_pred_SVM = classifier_SVM_trained.predict(X_test)
 
+classifier_SVM_trained_handmatig = SVC(random_state=42, 
+                     max_iter=5000, 
+                     class_weight='balanced', 
+                     kernel = 'linear'
+                     ).fit(X_train, y_train)
+y_pred_SVM_trained_handmatig = classifier_SVM_trained_handmatig.predict(X_test)
+y_scores_SVM_trained_handmatig = classifier_SVM_trained_handmatig.decision_function(X_test)
 
 print("Linear Support Vector")
 print(f"CL Report of Logistic Regression:",classification_report(y_test, y_pred_SVM, zero_division='warn'))
 
-y_scores_SVM = classifier_SVM.decision_function(X_test)
 plot_auc(y_test, y_scores_SVM)
+plot_auc(y_test, y_scores_SVM_trained_handmatig)
 
 #%% Gradient Boosting
 
