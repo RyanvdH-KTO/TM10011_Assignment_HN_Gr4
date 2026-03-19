@@ -186,13 +186,12 @@ print('Best parameters found:\n', grid_search_regression.best_params_)
 print("Beste score:", grid_search_regression.best_score_)
 regression_model = grid_search_regression.best_estimator_ 
 y_pred_regression = regression_model.predict(X_test) 
-print(f"CL Report of PLS-DA:", classification_report(y_test, y_pred_pls_da, zero_division='warn'))
+print(f"CL Report of PLS-DA:", classification_report(y_test, y_pred_regression, zero_division='warn'))
+ 
+probabilities_regression = regression_model.predict_proba(X_test)
 
-class_XGB_trained = grid_search_regression
+plot_auc(y_test, probabilities_regression[:,1])
 
-y_pred_XGB = class_XGB_trained.predict(X_test)
-y_scores_XGB = class_XGB.predict_proba(X_test)[:, 1]
-plot_auc(y_test, y_scores_XGB)
 
 
 
@@ -220,37 +219,94 @@ print("PLS-DA Training Score:", clas_pls_da_trained.score(X_train_pls, y_train))
 print(f"CL Report of PLS-DA:", classification_report(y_test, y_pred_pls_da, zero_division='warn'))
 
 
+#%%
+from sklearn.preprocessing import FunctionTransformer
+from sklearn.cross_decomposition import PLSRegression
+from sklearn.pipeline import Pipeline
+from sklearn.model_selection import GridSearchCV, StratifiedKFold
+from sklearn.metrics import classification_report, roc_auc_score, roc_curve
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 
+# 1. PLS output handler
+def squeeze_output(X):
+    if isinstance(X, tuple):
+        X = X[0]
+    return X.reshape(X.shape[0], -1)
 
-
-
-
-
-
-
-
-
-
-
-#%% pipeline attempt
-
-kf = StratifiedKFold(n_splits=10, shuffle=True, random_state=42)
-preprocessor = X_train, y_train
-
-pipeline_regression = Pipeline(steps=[
-    ('preprocessor', preprocessor),
-    ('classifier', LogisticRegression(penalty='l1', solver='saga', class_weight='balanced', random_state=42, max_iter=10000))
+# 2. Pipeline
+pipeline_pls_da = Pipeline([
+    ('scaler', StandardScaler()),
+    ('pls', PLSRegression(n_components=1, scale=False, max_iter=10)),
+    ('squeeze', FunctionTransformer(squeeze_output)),
+    ('classifier', LogisticRegression(
+        penalty='l1', solver='saga', class_weight='balanced', 
+        random_state=42, max_iter=10
+    ))
 ])
 
-param_grid_regression = {
+# 3. Grid search
+param_grid_pls_da = {
+    'pls__n_components': [5, 10, 15],
     'classifier__C': [0.001, 0.01, 0.1, 1, 10]
 }
 
-grid_search_regression = GridSearchCV(pipeline_regression, param_grid_regression, cv=kf, scoring='roc_auc', n_jobs=-1)
-grid_search_regression.fit(X_train, y_train)
+kf = StratifiedKFold(n_splits=25, shuffle=True, random_state=42)
+grid_search_pls_da = GridSearchCV(pipeline_pls_da, param_grid_pls_da, 
+                                 cv=kf, scoring='roc_auc', n_jobs=-1)
 
-print('Best parameters found:\n', grid_search_regression.best_params_)
-print("Beste score:", grid_search_regression.best_score_)
+print("🔄 Fitting PLS-DA Pipeline...")
+grid_search_pls_da.fit(X_train, y_train)
 
+print('✅ Best parameters found:\n', grid_search_pls_da.best_params_)
+print("Best CV ROC-AUC score:", f"{grid_search_pls_da.best_score_:.3f}")
 
-#%%
+# 4. Predictions
+pls_da_model = grid_search_pls_da.best_estimator_
+y_pred_pls_da = pls_da_model.predict(X_test)
+probabilities_pls_da = pls_da_model.predict_proba(X_test)[:, 1]
+
+# 5. FIXED: Handle pandas Series
+y_test_1d = y_test.values.ravel()  # 👈 Series → 1D numpy array
+y_train_1d = y_train.values.ravel()
+
+print(f"PLS-DA Test ROC-AUC: {roc_auc_score(y_test_1d, probabilities_pls_da):.3f}")
+print(f"CL Report of PLS-DA:\n", 
+      classification_report(y_test_1d, y_pred_pls_da, zero_division='warn'))
+
+# 6. ROC Plot
+def plot_auc(y_true, y_proba, title="ROC Curve", figsize=(8, 6)):
+    fpr, tpr, _ = roc_curve(y_true, y_proba)
+    auc_score = roc_auc_score(y_true, y_proba)
+    
+    plt.figure(figsize=figsize)
+    plt.plot(fpr, tpr, color='darkorange', lw=3, 
+             label=f'PLS-DA (AUC = {auc_score:.3f})')
+    plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', 
+             label='Random (AUC = 0.500)')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate', fontsize=12)
+    plt.ylabel('True Positive Rate', fontsize=12)
+    plt.title(title, fontsize=14, fontweight='bold')
+    plt.legend(loc="lower right", fontsize=11)
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.show()
+
+# 7. Generate the plot! 🎨
+plot_auc(y_test_1d, probabilities_pls_da, title="PLS-DA ROC Curve")
+
+# 8. Model comparison table
+print("\n" + "="*70)
+print("🏆 FINAL MODEL COMPARISON")
+print("="*70)
+print(f"{'Model':<25} {'CV-AUC':<10} {'Test-AUC':<10}")
+print("-"*70)
+print(f"{'LogisticRegression':<25} {grid_search_regression.best_score_:.3f}   "
+      f"{roc_auc_score(y_test_1d, probabilities_regression[:,1]):.3f}")
+print(f"{'PLS-DA':<25} {grid_search_pls_da.best_score_:.3f}   "
+      f"{roc_auc_score(y_test_1d, probabilities_pls_da):.3f}")
+print("="*70)
+# %%
