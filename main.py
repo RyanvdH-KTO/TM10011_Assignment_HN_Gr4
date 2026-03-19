@@ -168,18 +168,20 @@ def plot_auc(labels, probs_regression):
 # Elastic-Net-Logistic-Regression
 
 preprocessor = StandardScaler()
+#preprocessor = X_train, y_train
 kf = StratifiedKFold(n_splits=10, shuffle=True, random_state=42)
 
 pipeline_regression = Pipeline(steps=[
     ('preprocessor', preprocessor),
-    ('classifier', LogisticRegression(penalty='elasticnet', solver='saga', class_weight='balanced', random_state=42, max_iter=10000))
+    ('classifier', LogisticRegression(penalty='l1', solver='saga', class_weight='balanced', random_state=42, max_iter=10000))
 ])
 
 param_grid_regression = {
-    'classifier__C': [0.001, 0.01, 0.1, 1, 10]
+    'classifier__C': [0.001, 0.01, 0.1, 1, 10],
+    'classifier__penalty': ['l1', 'l2', 'elasticnet']
 }
 
-grid_search_regression = GridSearchCV(pipeline_regression, param_grid_regression, cv=kf, scoring='roc_auc', n_jobs=-1)
+grid_search_regression = GridSearchCV(pipeline_regression, param_grid_regression, cv=kf, scoring=["accuracy", "roc_auc", "f1"], refit = 'roc_auc', n_jobs=-1)
 grid_search_regression.fit(X_train, y_train)
 
 print('Best parameters found:\n', grid_search_regression.best_params_)
@@ -239,7 +241,7 @@ pipeline_pls_da = Pipeline([
     ('pls', PLSRegression(n_components=1, scale=False, max_iter=10)),
     ('squeeze', FunctionTransformer(squeeze_output)),
     ('classifier', LogisticRegression(
-        penalty='l1', solver='saga', class_weight='balanced', 
+        penalty='elasticnet', solver='saga', class_weight='balanced', 
         random_state=42, max_iter=10
     ))
 ])
@@ -251,7 +253,7 @@ param_grid_pls_da = {
 
 
 grid_search_pls_da = GridSearchCV(pipeline_pls_da, param_grid_pls_da, 
-                                 cv=kf, scoring='roc_auc', n_jobs=-1)
+                                 cv=kf, scoring=["accuracy", "roc_auc", "f1"], refit = 'roc_auc', n_jobs=-1)
 
 
 grid_search_pls_da.fit(X_train, y_train)
@@ -274,6 +276,7 @@ print(f"CL Report of PLS-DA:\n",
 
 
 plot_auc(y_test_1d, probabilities_pls_da)
+
 
 
 # %%
