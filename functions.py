@@ -1,3 +1,4 @@
+# %%
 import pandas as pd
 import numpy as np
 import seaborn
@@ -128,7 +129,7 @@ def rfe_selection(X_train, X_test, y_train, estimator, n_features=10):
     X_train_sel = selector.fit_transform(X_train, y_train)
     X_test_sel = selector.transform(X_test)
 
-    #selected_indices = selector.get_support(indices=True)
+    # selected_indices = selector.get_support(indices=True)
     #ranking = selector.ranking_
 
     #print("Selected feature indices:", selected_indices)
@@ -136,13 +137,16 @@ def rfe_selection(X_train, X_test, y_train, estimator, n_features=10):
     #print("Shape train after selection:", X_train_sel.shape)
     #print("Shape test after selection:", X_test_sel.shape)
 
-    return X_train_sel, X_test_sel
+    return X_train_sel, X_test_sel #, selected_indices
+
+# %%
 
 # Sequential Feature Selector
-def sfs_selection(X_train, X_test, y_train, estimator, n_features=10, direction="forward", scoring="accuracy", cv=5):
+def sfs_selection(X_train, X_test, y_train, estimator, direction="forward", scoring="accuracy", cv=5): # accuracy kan ook met f1 of ROC-AUC, dat nog goed beargumenteren
     selector = SequentialFeatureSelector(
-        estimator,
-        n_features_to_select=n_features,
+        estimator=estimator,
+        n_features_to_select="auto",
+        tol=0.01,
         direction=direction,
         scoring=scoring,
         cv=cv,
@@ -152,13 +156,13 @@ def sfs_selection(X_train, X_test, y_train, estimator, n_features=10, direction=
     X_train_sel = selector.fit_transform(X_train, y_train)
     X_test_sel = selector.transform(X_test)
 
-    # selected_indices = selector.get_support(indices=True)
+    #selected_indices = selector.get_support(indices=True)
 
     # print("Selected feature indices:", selected_indices)
     # print("Shape train after selection:", X_train_sel.shape)
     # print("Shape test after selection:", X_test_sel.shape)
 
-    return X_train_sel, X_test_sel
+    return X_train_sel, X_test_sel #, selected_indices
 
 #PCA feature selection 
 def pca_selection(X_train, X_test, n_components=0.95):
@@ -169,3 +173,5 @@ def pca_selection(X_train, X_test, n_components=0.95):
 
     return X_train_pca, X_test_pca
 
+
+# %%

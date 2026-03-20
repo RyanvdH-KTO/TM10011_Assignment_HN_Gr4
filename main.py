@@ -50,9 +50,74 @@ def main():
     X_train_filtered, X_test_filtered, to_drop, surviving_cols = remove_correlated_features(X_train_scaled, X_test_scaled)
 
     #Plot the correlation matrix
-    plot_correlation_matrix(X_train_scaled, to_drop, feature_names=X.columns.tolist())
+    # plot_correlation_matrix(X_train_scaled, to_drop, feature_names=X.columns.tolist())
 
-    #%% Logistic Regression Classifier
+    # Feature selection
+    # Deze uitvoeren voor estimator = logistic regresion en voor de SVM. 
+
+    # Logistic Regression estimator for feature selection
+    lr_estimator = LogisticRegression(
+        penalty='l2',
+        solver='liblinear',
+        class_weight='balanced',
+        random_state=42,
+        max_iter=10000
+    )
+    # Deze gebruikte ik even om te testen, maar hier moet dan goeie LR model of SVM
+
+    # Feature selection
+    # Select k best ANOVA
+    X_train_anova, X_test_anova = select_k_best_anova(
+    X_train_filtered,
+    X_test_filtered,
+    y_train,
+    k=10
+    )
+
+    # print("Shape train after k best ANOVA:", X_train_anova.shape)
+    # print("Shape test after ANOVA:", X_test_anova.shape)
+
+
+    # SFS forward
+    X_train_sfs_fwd, X_test_sfs_fwd = sfs_selection(
+    X_train_filtered,
+    X_test_filtered,
+    y_train,
+    estimator=lr_estimator,
+    direction="forward",
+    scoring="accuracy", #kan ook roc-auc
+    cv=5
+    ) 
+
+    # print("Shape train after SFS forward:", X_train_sfs_fwd.shape)
+    # print("Shape test after SFS forward:", X_test_sfs_fwd.shape)
+
+    # SFS backward
+    X_train_sfs_bwd, X_test_sfs_bwd = sfs_selection(
+        X_train_filtered,
+        X_test_filtered,
+        y_train,
+        estimator=lr_estimator,
+        direction="backward",
+        scoring="accuracy",
+        cv=5
+    )  
+
+    # print("Shape train after SFS backward:", X_train_sfs_bwd.shape)
+    # print("Shape test after SFS backward:", X_test_sfs_bwd.shape)
+
+    # RFE
+    X_train_rfe, X_test_rfe = rfe_selection(
+        X_train_filtered,
+        X_test_filtered,
+        y_train,
+        estimator=lr_estimator,
+        n_features=10
+    )
+
+    # print("Shape train after RFE:", X_train_rfe.shape)
+    # print("Shape test after RFE:", X_test_rfe.shape)
+
     # Logistic Regression Classifier
     '''Needs feature selection beforehand, so we compare different methods to be able to use the best in the pipeline'''
 
