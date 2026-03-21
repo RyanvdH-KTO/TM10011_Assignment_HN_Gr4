@@ -7,7 +7,7 @@ from sklearn.preprocessing import StandardScaler, LabelEncoder, MinMaxScaler, Ro
 from sklearn.feature_selection import SelectKBest, f_classif, RFE, VarianceThreshold
 from sklearn.linear_model import LogisticRegression
 from sklearn.feature_selection import SequentialFeatureSelector
-from sklearn.model_selection import train_test_split, StratifiedKFold, cross_validate, GridSearchCV
+from sklearn.model_selection import train_test_split, StratifiedKFold, GridSearchCV
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import precision_score, recall_score, f1_score, roc_curve, auc, confusion_matrix, classification_report
 from functions import check_missing_values, split_features_target, scale_features, select_k_best_anova, rfe_selection, sfs_selection, pca_selection, remove_correlated_features
@@ -18,6 +18,10 @@ from sklearn.cross_decomposition import PLSRegression
 #%% Load Data
 # Load Data
 data = load_data()
+print(f'The number of samples: {len(data.index)}')
+print(f'The number of columns: {len(data.columns)}')
+
+data, final_test = train_test_split(data, test_size=0.2, random_state=42)
 print(f'The number of samples: {len(data.index)}')
 print(f'The number of columns: {len(data.columns)}')
 
