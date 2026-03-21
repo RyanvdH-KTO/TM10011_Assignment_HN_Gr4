@@ -156,7 +156,7 @@ def main():
     # Select k best ANOVA
     X_train_anova, X_test_anova = select_k_best_anova(
     X_train_filtered,
-    X_test_filtered,
+    X_validate_filtered,
     y_train,
     k=10
     )
@@ -168,7 +168,7 @@ def main():
     # SFS forward
     X_train_sfs_fwd, X_test_sfs_fwd = sfs_selection(
     X_train_filtered,
-    X_test_filtered,
+    X_validate_filtered,
     y_train,
     estimator=lr_estimator,
     direction="forward",
@@ -182,7 +182,7 @@ def main():
     # SFS backward
     X_train_sfs_bwd, X_test_sfs_bwd = sfs_selection(
         X_train_filtered,
-        X_test_filtered,
+        X_validate_filtered,
         y_train,
         estimator=lr_estimator,
         direction="backward",
@@ -196,7 +196,7 @@ def main():
     # RFE
     X_train_rfe, X_test_rfe = rfe_selection(
         X_train_filtered,
-        X_test_filtered,
+        X_validate_filtered,
         y_train,
         estimator=lr_estimator,
         n_features=10
