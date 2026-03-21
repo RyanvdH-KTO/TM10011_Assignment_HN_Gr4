@@ -3,25 +3,23 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from hn.load_data import load_data
-from sklearn.feature_selection import VarianceThreshold
 from sklearn.preprocessing import StandardScaler, LabelEncoder, MinMaxScaler, RobustScaler
-from sklearn.preprocessing import LabelEncoder
-from sklearn.feature_selection import SelectKBest
-from sklearn.feature_selection import f_classif
-from sklearn.feature_selection import RFE
+from sklearn.feature_selection import SelectKBest, f_classif, RFE, VarianceThreshold
 from sklearn.linear_model import LogisticRegression
 from sklearn.feature_selection import SequentialFeatureSelector
-from sklearn.model_selection import train_test_split
-from sklearn.model_selection import StratifiedKFold, cross_validate
+from sklearn.model_selection import train_test_split, StratifiedKFold, cross_validate, GridSearchCV
 from sklearn.pipeline import Pipeline
 from functions import check_missing_values, split_features_target, scale_features, select_k_best_anova, rfe_selection, sfs_selection, pca_selection, remove_correlated_features 
 
+#%% Load Data
+# Load Data
+data = load_data()
+print(f'The number of samples: {len(data.index)}')
+print(f'The number of columns: {len(data.columns)}')
+
 #%%
-def main():
-    # Load Data
-    data = load_data()
-    print(f'The number of samples: {len(data.index)}')
-    print(f'The number of columns: {len(data.columns)}')
+def preprocessing():
+    
 
     # Check missing values
     check_missing_values(data)
@@ -48,6 +46,41 @@ def main():
     #Covariance feature elimination
     X_train_filtered, X_test_filtered = remove_correlated_features(X_train_scaled, X_test_scaled)
     print(X_train_scaled)
+
+    return X_train_filtered
+
+preprocessor = StandardScaler()
+#preprocessor = X_train, y_train
+kf = StratifiedKFold(n_splits=10, shuffle=True, random_state=42)
+
+pipeline_regression = Pipeline(steps=[
+    ('preprocessor', preprocessor),
+    ('classifier', LogisticRegression(penalty='l1', solver='saga', class_weight='balanced', random_state=42, max_iter=10000))
+])
+
+param_grid_regression = {
+    'classifier__C': [0.001, 0.01, 0.1, 1, 10],
+    'classifier__penalty': ['l1', 'l2', 'elasticnet']
+}
+
+grid_search_regression = GridSearchCV(pipeline_regression, param_grid_regression, cv=kf, scoring=["accuracy", "roc_auc", "f1"], refit = 'roc_auc', n_jobs=-1)
+grid_search_regression.fit(X_train, y_train)
+
+print('Best parameters found:\n', grid_search_regression.best_params_)
+print("Beste score:", grid_search_regression.best_score_)
+regression_model = grid_search_regression.best_estimator_ 
+y_pred_regression = regression_model.predict(X_test) 
+print(f"CL Report of PLS-DA:", classification_report(y_test, y_pred_regression, zero_division='warn'))
+ 
+probabilities_regression = regression_model.predict_proba(X_test)
+
+plot_auc(y_test, probabilities_regression[:,1])
+
+
+
+
+
+#%%
 
     #Pipeline that compares feature selectors and classifiers
     feature_selectors = {
