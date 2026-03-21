@@ -53,8 +53,8 @@ def main():
     #Split dataset into features and encoded labels
     X, y = split_features_target(data)
 
-    #Split into train and testset
-    X_train, X_test, y_train, y_test = train_test_split(
+    #Split into train and validateset
+    X_train, X_validate, y_train, y_validate = train_test_split(
         X,
         y,
         test_size=0.2,
@@ -63,14 +63,14 @@ def main():
     )
 
     #Scale features
-    X_train_scaled, X_test_scaled, scaler = scale_features(X_train, X_test)
+    X_train_scaled, X_validate_scaled, scaler = scale_features(X_train, X_validate)
 
     print("Train shape:", X_train_scaled.shape)
-    print("Test shape:", X_test_scaled.shape)
+    print("Test shape:", X_validate_scaled.shape)
     print("Label distribution training set:\n", y_train.value_counts())
 
     #Covariance feature elimination
-    X_train_filtered, X_test_filtered, to_drop, surviving_cols = remove_correlated_features(X_train_scaled, X_test_scaled)
+    X_train_filtered, X_validate_filtered, to_drop, surviving_cols = remove_correlated_features(X_train_scaled, X_validate_scaled)
 
 
     kf = StratifiedKFold(n_splits=10, shuffle=True, random_state=42)
@@ -89,13 +89,13 @@ def main():
     grid_search_regression.fit(X_train_filtered, y_train)
 
     regression_model = grid_search_regression.best_estimator_ 
-    y_pred_regression = regression_model.predict(X_test_filtered)
-    probabilities_regression = regression_model.predict_proba(X_test_filtered)
+    y_pred_regression = regression_model.predict(X_validate_filtered)
+    probabilities_regression = regression_model.predict_proba(X_validate_filtered)
 
     print('Best parameters found:\n', grid_search_regression.best_params_)
     print("Beste score:", grid_search_regression.best_score_)
-    print(f"CL Report of PLS-DA:", classification_report(y_test, y_pred_regression, zero_division='warn'))
-    plot_auc(y_test, probabilities_regression[:,1])
+    print(f"CL Report of PLS-DA:", classification_report(y_validate, y_pred_regression, zero_division='warn'))
+    plot_auc(y_validate, probabilities_regression[:,1])
 
 
     # Pipeline PLS-DA
@@ -123,13 +123,13 @@ def main():
     grid_search_pls_da.fit(X_train_filtered, y_train)
 
     pls_da_model = grid_search_pls_da.best_estimator_ 
-    y_pred_pls_da = pls_da_model.predict(X_test_filtered)
-    probabilities_pls_da = pls_da_model.predict_proba(X_test_filtered)
+    y_pred_pls_da = pls_da_model.predict(X_validate_filtered)
+    probabilities_pls_da = pls_da_model.predict_proba(X_validate_filtered)
 
     print('Best parameters found:\n', grid_search_pls_da.best_params_)
     print("Beste score:", grid_search_pls_da.best_score_)
-    print(f"CL Report of PLS-DA:", classification_report(y_test, y_pred_pls_da, zero_division='warn'))
-    plot_auc(y_test, probabilities_pls_da[:,1])
+    print(f"CL Report of PLS-DA:", classification_report(y_validate, y_pred_pls_da, zero_division='warn'))
+    plot_auc(y_validate, probabilities_pls_da[:,1])
 
 #%%
 
