@@ -53,7 +53,6 @@ def preprocessing(data):
 kf = StratifiedKFold(n_splits=10, shuffle=True, random_state=42)
 
 pipeline_regression = Pipeline(steps=[
-    ('preprocessor', FunctionTransformer(preprocessing)),
     ('classifier', LogisticRegression(penalty='l1', solver='saga', class_weight='balanced', random_state=42, max_iter=10000))
 ])
 
@@ -75,7 +74,7 @@ print(f"CL Report of PLS-DA:", classification_report(y_test, y_pred_regression, 
  
 probabilities_regression = regression_model.predict_proba(X_test_filtered)
 
-#plot_auc(y_test, probabilities_regression[:,1])
+plot_auc(y_test, probabilities_regression[:,1])
 
 
 
