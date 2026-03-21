@@ -13,6 +13,7 @@ from sklearn.metrics import precision_score, recall_score, f1_score, roc_curve, 
 from functions import check_missing_values, split_features_target, scale_features, select_k_best_anova, rfe_selection, sfs_selection, pca_selection, remove_correlated_features
 from functions import plot_correlation_matrix
 from sklearn.preprocessing import FunctionTransformer
+from sklearn.cross_decomposition import PLSRegression
 
 #%% Load Data
 # Load Data
@@ -96,11 +97,10 @@ def main():
     # Pipeline PLS-DA
     def squeeze_output(X):
         if isinstance(X, tuple):
-        X = X[0]
+            X = X[0]
         return X.reshape(X.shape[0], -1)
 
     pipeline_pls_da = Pipeline([
-        ('scaler', StandardScaler()),
         ('pls', PLSRegression(n_components=1, scale=False, max_iter=10)),
         ('squeeze', FunctionTransformer(squeeze_output)),
         ('classifier', LogisticRegression(
@@ -116,7 +116,16 @@ def main():
 
     grid_search_pls_da = GridSearchCV(pipeline_pls_da, param_grid_pls_da, 
                                     cv=kf, scoring=["accuracy", "roc_auc", "f1"], refit = 'roc_auc', n_jobs=-1)
+    grid_search_pls_da.fit(X_train_filtered, y_train)
 
+    pls_da_model = grid_search_pls_da.best_estimator_ 
+    y_pred_pls_da = pls_da_model.predict(X_test_filtered)
+    probabilities_pls_da = pls_da_model.predict_proba(X_test_filtered)
+
+    print('Best parameters found:\n', grid_search_pls_da.best_params_)
+    print("Beste score:", grid_search_pls_da.best_score_)
+    print(f"CL Report of PLS-DA:", classification_report(y_test, y_pred_pls_da, zero_division='warn'))
+    plot_auc(y_test, probabilities_pls_da[:,1])
 
 #%%
 
