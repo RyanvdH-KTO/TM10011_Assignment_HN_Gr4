@@ -1,6 +1,9 @@
+# %%
 import pandas as pd
 import numpy as np
 import seaborn
+import matplotlib.pyplot as plt
+import seaborn as sns
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
 from sklearn.feature_selection import VarianceThreshold
@@ -12,6 +15,7 @@ from sklearn.feature_selection import RFE
 from sklearn.linear_model import LogisticRegression
 from sklearn.feature_selection import SequentialFeatureSelector
 from sklearn.decomposition import PCA
+
 
 
 # Missing data functie
@@ -57,25 +61,45 @@ def scale_features(X_train, X_test, method="standard"):
     return X_train_scaled, X_test_scaled, scaler
 
 def remove_correlated_features(X_train, X_test, threshold=0.95):
-    # calculate correlation matrix on train only!
-    corr_matrix = pd.DataFrame(X_train).corr().abs()
-
-    # find upper triangle of correlation matrix
+    df_train = pd.DataFrame(X_train)
+    corr_matrix = df_train.corr().abs()
+    
     upper = corr_matrix.where(
         np.triu(np.ones(corr_matrix.shape), k=1).astype(bool)
     )
-
-    # find columns where correlation exceeds threshold
+    
     to_drop = [col for col in upper.columns if any(upper[col] > threshold)]
+    surviving_cols = [col for col in df_train.columns if col not in to_drop]
 
     print(f"Removing {len(to_drop)} correlated features")
-    print(f"Features remaining: {X_train.shape[1] - len(to_drop)}")
+    print(f"Features remaining: {len(surviving_cols)}")
 
-    # drop from both train and test
-    X_train_filtered = pd.DataFrame(X_train).drop(columns=to_drop).values
+    X_train_filtered = df_train.drop(columns=to_drop).values
     X_test_filtered = pd.DataFrame(X_test).drop(columns=to_drop).values
 
-    return X_train_filtered, X_test_filtered
+    return X_train_filtered, X_test_filtered, to_drop, surviving_cols
+
+def plot_correlation_matrix(X_train, to_drop, feature_names=None):
+    df = pd.DataFrame(X_train, columns=feature_names)
+    
+    # only keep the columns that will be dropped
+    df_dropped = df[to_drop]
+    corr_matrix = df_dropped.corr().abs()
+
+    plt.figure(figsize=(12, 10))
+    sns.heatmap(
+        corr_matrix,
+        cmap="coolwarm",
+        center=0,
+        vmin=0, vmax=1,
+        square=True,
+        linewidths=0,
+        cbar_kws={"shrink": 0.8, "label": "Absolute Correlation"},
+    )
+    plt.title("Correlation Matrix — Dropped Features", fontsize=14, fontweight="bold")
+    plt.tight_layout()
+    plt.savefig("correlation_matrix.png", dpi=150, bbox_inches="tight")
+    plt.show()
 
 #%% Feature selectors
 
@@ -105,7 +129,7 @@ def rfe_selection(X_train, X_test, y_train, estimator, n_features=10):
     X_train_sel = selector.fit_transform(X_train, y_train)
     X_test_sel = selector.transform(X_test)
 
-    #selected_indices = selector.get_support(indices=True)
+    # selected_indices = selector.get_support(indices=True)
     #ranking = selector.ranking_
 
     #print("Selected feature indices:", selected_indices)
@@ -113,13 +137,16 @@ def rfe_selection(X_train, X_test, y_train, estimator, n_features=10):
     #print("Shape train after selection:", X_train_sel.shape)
     #print("Shape test after selection:", X_test_sel.shape)
 
-    return X_train_sel, X_test_sel
+    return X_train_sel, X_test_sel #, selected_indices
+
+# %%
 
 # Sequential Feature Selector
-def sfs_selection(X_train, X_test, y_train, estimator, n_features=10, direction="forward", scoring="accuracy", cv=5):
+def sfs_selection(X_train, X_test, y_train, estimator, direction="forward", scoring="accuracy", cv=5): # accuracy kan ook met f1 of ROC-AUC, dat nog goed beargumenteren
     selector = SequentialFeatureSelector(
-        estimator,
-        n_features_to_select=n_features,
+        estimator=estimator,
+        n_features_to_select="auto",
+        tol=0.01,
         direction=direction,
         scoring=scoring,
         cv=cv,
@@ -129,13 +156,13 @@ def sfs_selection(X_train, X_test, y_train, estimator, n_features=10, direction=
     X_train_sel = selector.fit_transform(X_train, y_train)
     X_test_sel = selector.transform(X_test)
 
-    # selected_indices = selector.get_support(indices=True)
+    #selected_indices = selector.get_support(indices=True)
 
     # print("Selected feature indices:", selected_indices)
     # print("Shape train after selection:", X_train_sel.shape)
     # print("Shape test after selection:", X_test_sel.shape)
 
-    return X_train_sel, X_test_sel
+    return X_train_sel, X_test_sel #, selected_indices
 
 #PCA feature selection 
 def pca_selection(X_train, X_test, n_components=0.95):
@@ -146,3 +173,5 @@ def pca_selection(X_train, X_test, n_components=0.95):
 
     return X_train_pca, X_test_pca
 
+
+# %%

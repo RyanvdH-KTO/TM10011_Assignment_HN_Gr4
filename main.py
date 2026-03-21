@@ -9,7 +9,8 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.feature_selection import SequentialFeatureSelector
 from sklearn.model_selection import train_test_split, StratifiedKFold, cross_validate, GridSearchCV
 from sklearn.pipeline import Pipeline
-from functions import check_missing_values, split_features_target, scale_features, select_k_best_anova, rfe_selection, sfs_selection, pca_selection, remove_correlated_features 
+from functions import check_missing_values, split_features_target, scale_features, select_k_best_anova, rfe_selection, sfs_selection, pca_selection, remove_correlated_features
+from functions import plot_correlation_matrix
 
 #%% Load Data
 # Load Data
@@ -44,9 +45,9 @@ def preprocessing():
     print("Label distribution training set:\n", y_train.value_counts())
 
     #Covariance feature elimination
-    X_train_filtered, X_test_filtered = remove_correlated_features(X_train_scaled, X_test_scaled)
-    print(X_train_scaled)
+    X_train_filtered, X_test_filtered, to_drop, surviving_cols = remove_correlated_features(X_train_scaled, X_test_scaled)
 
+<<<<<<< HEAD
     return X_train_filtered
 
 preprocessor = StandardScaler()
@@ -87,47 +88,95 @@ plot_auc(y_test, probabilities_regression[:,1])
         "k best ANOVA" : SelectKBest(score_func=f_classif, k=10),
         "RFE"          : RFE(estimator=LogisticRegression(max_iter=1000), n_features_to_select=5),
     }
+=======
+    #Plot the correlation matrix
+    # plot_correlation_matrix(X_train_scaled, to_drop, feature_names=X.columns.tolist())
+>>>>>>> 6e98c5cb80ecc3574f612701de4b7a1aa736891e
 
-    classifiers = {
-        "Logistic Regression" : LogisticRegression(max_iter=1000, random_state=42),
-    }
+    # Feature selection
+    # Deze uitvoeren voor estimator = logistic regresion en voor de SVM. 
 
-    # results = []
-    # cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    # Logistic Regression estimator for feature selection
+    lr_estimator = LogisticRegression(
+        penalty='l2',
+        solver='liblinear',
+        class_weight='balanced',
+        random_state=42,
+        max_iter=10000
+    )
+    # Deze gebruikte ik even om te testen, maar hier moet dan goeie LR model of SVM
 
-    # for sel_name, selector in feature_selectors.items():
-    #     for clf_name, clf in classifiers.items():
-            
-    #         selector.fit(X_train_scaled, y_train)
-    #         selected_indices = selector.get_support(indices=True)
-    #         selected_names = X.columns[selected_indices].tolist()
-    #         print(f"\n[{sel_name}] Selected features: {selected_names}")
+    # Feature selection
+    # Select k best ANOVA
+    X_train_anova, X_test_anova = select_k_best_anova(
+    X_train_filtered,
+    X_test_filtered,
+    y_train,
+    k=10
+    )
 
-    #         pipe = Pipeline([
-    #             ("selector", selector),
-    #             ("clf",      clf),
-    #         ])
-            
-    #         #Get different cross-validation scores
-    #         scores = cross_validate(
-    #             pipe, X_train_scaled, y_train,
-    #             cv=cv,
-    #             scoring=["accuracy", "roc_auc", "f1"], 
-    #             n_jobs=-1
-    #         )
+    # print("Shape train after k best ANOVA:", X_train_anova.shape)
+    # print("Shape test after ANOVA:", X_test_anova.shape)
 
-    #         results.append({
-    #             "Feature Selection" : sel_name,
-    #             "Classifier"        : clf_name,
-    #             "Accuracy"          : scores["test_accuracy"].mean(),
-    #             "ROC-AUC"           : scores["test_roc_auc"].mean(),
-    #             "F1"                : scores["test_f1"].mean(),
-    #         })
 
-    # results_df = pd.DataFrame(results)
-    # print(results_df)
-    # return results_df, X_test, y_test
+    # SFS forward
+    X_train_sfs_fwd, X_test_sfs_fwd = sfs_selection(
+    X_train_filtered,
+    X_test_filtered,
+    y_train,
+    estimator=lr_estimator,
+    direction="forward",
+    scoring="accuracy", #kan ook roc-auc
+    cv=5
+    ) 
 
+    # print("Shape train after SFS forward:", X_train_sfs_fwd.shape)
+    # print("Shape test after SFS forward:", X_test_sfs_fwd.shape)
+
+    # SFS backward
+    X_train_sfs_bwd, X_test_sfs_bwd = sfs_selection(
+        X_train_filtered,
+        X_test_filtered,
+        y_train,
+        estimator=lr_estimator,
+        direction="backward",
+        scoring="accuracy",
+        cv=5
+    )  
+
+    # print("Shape train after SFS backward:", X_train_sfs_bwd.shape)
+    # print("Shape test after SFS backward:", X_test_sfs_bwd.shape)
+
+    # RFE
+    X_train_rfe, X_test_rfe = rfe_selection(
+        X_train_filtered,
+        X_test_filtered,
+        y_train,
+        estimator=lr_estimator,
+        n_features=10
+    )
+
+    # print("Shape train after RFE:", X_train_rfe.shape)
+    # print("Shape test after RFE:", X_test_rfe.shape)
+
+    # Logistic Regression Classifier
+    '''Needs feature selection beforehand, so we compare different methods to be able to use the best in the pipeline'''
+
+    #%% SVM classifier
+    #SVM classifier
+    '''Needs feature selection beforehand, so we compare different methods to be able to use the best in the pipeline'''
+
+
+    #%% XGBoost Classifier
+    #XGBoost Classifier
+    '''Doesn't need further feature selection, since this method handles that itself'''
+
+    #%% Partial Least Square classifer
+    #PLS classifier
+    '''Doesn't need further feature selection, since this method handles that itself'''
+
+
+    #%% Classifier Evaluation 
 
 #%%
 if __name__ == "__main__":
