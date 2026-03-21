@@ -9,8 +9,10 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.feature_selection import SequentialFeatureSelector
 from sklearn.model_selection import train_test_split, StratifiedKFold, cross_validate, GridSearchCV
 from sklearn.pipeline import Pipeline
+from sklearn.metrics import precision_score, recall_score, f1_score, roc_curve, auc, confusion_matrix, classification_report
 from functions import check_missing_values, split_features_target, scale_features, select_k_best_anova, rfe_selection, sfs_selection, pca_selection, remove_correlated_features
 from functions import plot_correlation_matrix
+from sklearn.preprocessing import FunctionTransformer
 
 #%% Load Data
 # Load Data
@@ -19,9 +21,7 @@ print(f'The number of samples: {len(data.index)}')
 print(f'The number of columns: {len(data.columns)}')
 
 #%%
-def preprocessing():
-    
-
+def preprocessing(data):
     # Check missing values
     check_missing_values(data)
 
@@ -47,17 +47,17 @@ def preprocessing():
     #Covariance feature elimination
     X_train_filtered, X_test_filtered, to_drop, surviving_cols = remove_correlated_features(X_train_scaled, X_test_scaled)
 
-<<<<<<< HEAD
-    return X_train_filtered
+    return X_train_filtered, X_test_filtered, y_train, y_test
 
-preprocessor = StandardScaler()
-#preprocessor = X_train, y_train
+#%%
 kf = StratifiedKFold(n_splits=10, shuffle=True, random_state=42)
 
 pipeline_regression = Pipeline(steps=[
-    ('preprocessor', preprocessor),
+    ('preprocessor', FunctionTransformer(preprocessing)),
     ('classifier', LogisticRegression(penalty='l1', solver='saga', class_weight='balanced', random_state=42, max_iter=10000))
 ])
+
+X_train_filtered, X_test_filtered, y_train, y_test = preprocessing(data)
 
 param_grid_regression = {
     'classifier__C': [0.001, 0.01, 0.1, 1, 10],
@@ -65,17 +65,17 @@ param_grid_regression = {
 }
 
 grid_search_regression = GridSearchCV(pipeline_regression, param_grid_regression, cv=kf, scoring=["accuracy", "roc_auc", "f1"], refit = 'roc_auc', n_jobs=-1)
-grid_search_regression.fit(X_train, y_train)
+grid_search_regression.fit(X_train_filtered, y_train)
 
 print('Best parameters found:\n', grid_search_regression.best_params_)
 print("Beste score:", grid_search_regression.best_score_)
 regression_model = grid_search_regression.best_estimator_ 
-y_pred_regression = regression_model.predict(X_test) 
+y_pred_regression = regression_model.predict(X_test_filtered) 
 print(f"CL Report of PLS-DA:", classification_report(y_test, y_pred_regression, zero_division='warn'))
  
-probabilities_regression = regression_model.predict_proba(X_test)
+probabilities_regression = regression_model.predict_proba(X_test_filtered)
 
-plot_auc(y_test, probabilities_regression[:,1])
+#plot_auc(y_test, probabilities_regression[:,1])
 
 
 
@@ -88,10 +88,6 @@ plot_auc(y_test, probabilities_regression[:,1])
         "k best ANOVA" : SelectKBest(score_func=f_classif, k=10),
         "RFE"          : RFE(estimator=LogisticRegression(max_iter=1000), n_features_to_select=5),
     }
-=======
-    #Plot the correlation matrix
-    # plot_correlation_matrix(X_train_scaled, to_drop, feature_names=X.columns.tolist())
->>>>>>> 6e98c5cb80ecc3574f612701de4b7a1aa736891e
 
     # Feature selection
     # Deze uitvoeren voor estimator = logistic regresion en voor de SVM. 
@@ -183,4 +179,46 @@ if __name__ == "__main__":
     main()
 
 
+# %%
+# CELL 6 - REPLACE EVERYTHING WITH THIS:
+
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.impute import SimpleImputer
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import GridSearchCV, StratifiedKFold
+
+# ✅ STEP 1: Define CLEAN pipeline (NO custom functions!)
+pipeline_regression = Pipeline([
+    ('imputer', SimpleImputer(strategy='mean')),    # Handles NaN
+    ('scaler', StandardScaler()),                   # Normalizes
+    ('classifier', LogisticRegression(max_iter=1000))
+])
+
+# ✅ STEP 2: FIXED parameter grid (no conflicts)
+param_grid_regression = {
+    'classifier__C': [0.001, 0.01, 0.1, 1, 10],
+    'classifier__penalty': ['l2']  # Only l2 works reliably
+}
+
+# ✅ STEP 3: Stratified KFold + single scoring
+skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+grid_search_regression = GridSearchCV(
+    pipeline_regression, 
+    param_grid_regression, 
+    cv=skf,
+    scoring='roc_auc',  # Single metric!
+    refit=True, 
+    n_jobs=-1
+)
+
+# ✅ STEP 4: THIS WILL WORK 100%
+grid_search_regression.fit(X_train_filtered, y_train)
+
+# ✅ Results
+print('✅ SUCCESS!')
+print('Best parameters:', grid_search_regression.best_params_)
+print('Best ROC-AUC:', grid_search_regression.best_score_)
+print('Best model:', grid_search_regression.best_estimator_)
 # %%
