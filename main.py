@@ -94,6 +94,28 @@ def main():
 
 
     # Pipeline PLS-DA
+    def squeeze_output(X):
+        if isinstance(X, tuple):
+        X = X[0]
+        return X.reshape(X.shape[0], -1)
+
+    pipeline_pls_da = Pipeline([
+        ('scaler', StandardScaler()),
+        ('pls', PLSRegression(n_components=1, scale=False, max_iter=10)),
+        ('squeeze', FunctionTransformer(squeeze_output)),
+        ('classifier', LogisticRegression(
+            penalty='elasticnet', solver='saga', class_weight='balanced', 
+            random_state=42, max_iter=10
+        ))
+    ])
+
+    param_grid_pls_da = {
+        'pls__n_components': [5, 10, 15],
+        'classifier__C': [0.001, 0.01, 0.1, 1, 10]
+    }
+
+    grid_search_pls_da = GridSearchCV(pipeline_pls_da, param_grid_pls_da, 
+                                    cv=kf, scoring=["accuracy", "roc_auc", "f1"], refit = 'roc_auc', n_jobs=-1)
 
 
 #%%
