@@ -15,6 +15,8 @@ from sklearn.feature_selection import RFE
 from sklearn.linear_model import LogisticRegression
 from sklearn.feature_selection import SequentialFeatureSelector
 from sklearn.decomposition import PCA
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score, roc_auc_score, f1_score
 
 
 
@@ -174,4 +176,3 @@ def pca_selection(X_train, X_test, n_components=0.95):
     return X_train_pca, X_test_pca
 
 
-# %%

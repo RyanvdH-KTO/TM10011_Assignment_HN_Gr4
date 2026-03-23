@@ -44,6 +44,46 @@ def plot_auc(labels, probs):
     plt.title('ROC')
     plt.legend()
     plt.show()
+
+def evaluate_logistic_regression(X_train_sel, X_validate_sel, y_train, y_validate, kf):
+    pipeline_regression = Pipeline(steps=[
+        ('classifier', LogisticRegression(
+            solver='saga',
+            class_weight='balanced',
+            random_state=42,
+            max_iter=10000
+        ))
+    ])
+
+    param_grid_regression = {
+        'classifier__C': [0.001, 0.01, 0.1, 1, 10],
+        'classifier__penalty': ['l1', 'l2']
+    }
+
+    grid_search_regression = GridSearchCV(
+        pipeline_regression,
+        param_grid_regression,
+        cv=kf,
+        scoring=["accuracy", "roc_auc", "f1"],
+        refit='roc_auc',
+        n_jobs=-1
+    )
+
+    grid_search_regression.fit(X_train_sel, y_train)
+
+    regression_model = grid_search_regression.best_estimator_
+    y_pred_regression = regression_model.predict(X_validate_sel)
+    probabilities_regression = regression_model.predict_proba(X_validate_sel)[:, 1]
+
+    results = {
+        "best_params": grid_search_regression.best_params_,
+        "best_cv_score": grid_search_regression.best_score_,
+        "y_pred": y_pred_regression,
+        "y_prob": probabilities_regression,
+        "model": regression_model
+    }
+
+    return results
     
 #%%
 def main():
@@ -72,30 +112,124 @@ def main():
     #Covariance feature elimination
     X_train_filtered, X_validate_filtered, to_drop, surviving_cols = remove_correlated_features(X_train_scaled, X_validate_scaled)
 
-
+    # Cross-validation object
     kf = StratifiedKFold(n_splits=10, shuffle=True, random_state=42)
 
-    # Pipeline Logistic regression
-    pipeline_regression = Pipeline(steps=[
-        ('classifier', LogisticRegression(penalty='l1', solver='saga', class_weight='balanced', random_state=42, max_iter=10000))
+    # Logistic Regression estimator for wrapper-based feature selection
+    lr_selector_estimator = LogisticRegression(
+        penalty='l1',
+        solver='saga',
+        class_weight='balanced',
+        random_state=42,
+        max_iter=10000
+    )
+
+
+    # Feature selection for LR
+    # 1. SelectKBest ANOVA
+    X_train_anova, X_validate_anova = select_k_best_anova(
+        X_train_filtered,
+        X_validate_filtered,
+        y_train,
+        k=10
+    )
+
+    # 2. SFS forward
+    X_train_sfs_fwd, X_validate_sfs_fwd = sfs_selection(
+        X_train_filtered,
+        X_validate_filtered,
+        y_train,
+        estimator=lr_selector_estimator,
+        direction="forward",
+        scoring="roc_auc",
+        cv=5
+    )
+
+    # 3. SFS backward
+    X_train_sfs_bwd, X_validate_sfs_bwd = sfs_selection(
+        X_train_filtered,
+        X_validate_filtered,
+        y_train,
+        estimator=lr_selector_estimator,
+        direction="backward",
+        scoring="roc_auc",
+        cv=5
+    )
+
+    # 4. RFE
+    X_train_rfe, X_validate_rfe = rfe_selection(
+        X_train_filtered,
+        X_validate_filtered,
+        y_train,
+        estimator=lr_selector_estimator,
+        n_features=10
+    )
+
+    # Evaluate LR per selector
+
+    results_anova = evaluate_logistic_regression(
+        X_train_anova, X_validate_anova, y_train, y_validate, kf
+    )
+
+    results_sfs_fwd = evaluate_logistic_regression(
+        X_train_sfs_fwd, X_validate_sfs_fwd, y_train, y_validate, kf
+    )
+
+    results_sfs_bwd = evaluate_logistic_regression(
+        X_train_sfs_bwd, X_validate_sfs_bwd, y_train, y_validate, kf
+    )
+
+    results_rfe = evaluate_logistic_regression(
+        X_train_rfe, X_validate_rfe, y_train, y_validate, kf
+    )
+
+    # Compare selectors for LR
+
+    comparison_df = pd.DataFrame([
+        {
+            "selector": "ANOVA",
+            "best_cv_roc_auc": results_anova["best_cv_score"]
+        },
+        {
+            "selector": "SFS forward",
+            "best_cv_roc_auc": results_sfs_fwd["best_cv_score"]
+        },
+        {
+            "selector": "SFS backward",
+            "best_cv_roc_auc": results_sfs_bwd["best_cv_score"]
+        },
+        {
+            "selector": "RFE",
+            "best_cv_roc_auc": results_rfe["best_cv_score"]
+        }
     ])
 
-    param_grid_regression = {
-        'classifier__C': [0.001, 0.01, 0.1, 1, 10],
-        'classifier__penalty': ['l1', 'l2', 'elasticnet']
-    }
+    print("\nComparison of feature selectors for Logistic Regression:")
+    print(comparison_df.sort_values(by="best_cv_roc_auc", ascending=False))
 
-    grid_search_regression = GridSearchCV(pipeline_regression, param_grid_regression, cv=kf, scoring=["accuracy", "roc_auc", "f1"], refit = 'roc_auc', n_jobs=-1)
-    grid_search_regression.fit(X_train_filtered, y_train)
+    # Select best selector based on validation choice proxy = best CV ROC-AUC
+    best_selector_name = comparison_df.sort_values(
+        by="best_cv_roc_auc", ascending=False
+    ).iloc[0]["selector"]
 
-    regression_model = grid_search_regression.best_estimator_ 
-    y_pred_regression = regression_model.predict(X_validate_filtered)
-    probabilities_regression = regression_model.predict_proba(X_validate_filtered)
+    print("\nBest feature selector for Logistic Regression:", best_selector_name)
 
-    print('Best parameters found:\n', grid_search_regression.best_params_)
-    print("Beste score:", grid_search_regression.best_score_)
-    print(f"CL Report of PLS-DA:", classification_report(y_validate, y_pred_regression, zero_division='warn'))
-    plot_auc(y_validate, probabilities_regression[:,1])
+    # Print report + ROC for best LR model
+    if best_selector_name == "ANOVA":
+        best_results = results_anova
+    elif best_selector_name == "SFS forward":
+        best_results = results_sfs_fwd
+    elif best_selector_name == "SFS backward":
+        best_results = results_sfs_bwd
+    else:
+        best_results = results_rfe
+
+    print("\nBest LR parameters found:\n", best_results["best_params"])
+    print("Best LR CV ROC-AUC:", best_results["best_cv_score"])
+    print("Classification report for best LR model:")
+    print(classification_report(y_validate, best_results["y_pred"], zero_division='warn'))
+    plot_auc(y_validate, best_results["y_prob"])
+
 
 
     # Pipeline PLS-DA
