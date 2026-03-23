@@ -22,6 +22,7 @@ from sklearn.cross_decomposition import PLSRegression
 data = pd.read_csv('hn/Trainings_data.csv', index_col=0)
 print(f'The number of samples: {len(data.index)}')
 print(f'The number of columns: {len(data.columns)}')
+print(data['label'].value_counts())
 
 #%% Def Plot AUC-curve
 def plot_auc(labels, probs, model):
