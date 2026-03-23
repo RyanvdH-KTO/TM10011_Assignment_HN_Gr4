@@ -1,0 +1,17 @@
+#%%
+from hn.load_data import load_data
+from sklearn.model_selection import train_test_split
+import pandas as pd
+import os
+
+#%%
+data = load_data('HN_radiomicFeatures.csv')
+print(f'The number of samples: {len(data.index)}')
+print(f'The number of columns: {len(data.columns)}')
+
+trainings_data, test_data = train_test_split(data, test_size=0.2, random_state=42)
+# %%
+trainings_data.to_csv(r'C:\Users\Ryanv\Documents\TM 10011 Machine Learning\TM10011_Assignment_HN_Gr4\hn\Trainings_data.csv', index=False)
+test_data.to_csv(r'C:\Users\Ryanv\Documents\TM 10011 Machine Learning\TM10011_Assignment_HN_Gr4\hn\Test_data.csv', index=False)
+
+# %%

@@ -2,6 +2,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import seaborn as sns
 from hn.load_data import load_data
 from sklearn.preprocessing import StandardScaler, LabelEncoder, MinMaxScaler, RobustScaler
 from sklearn.feature_selection import SelectKBest, f_classif, RFE, VarianceThreshold
@@ -17,16 +18,12 @@ from sklearn.cross_decomposition import PLSRegression
 
 #%% Load Data
 # Load Data
-data = load_data()
-print(f'The number of samples: {len(data.index)}')
-print(f'The number of columns: {len(data.columns)}')
 
-data, final_test = train_test_split(data, test_size=0.2, random_state=42)
 print(f'The number of samples: {len(data.index)}')
 print(f'The number of columns: {len(data.columns)}')
 
 #%% Def Plot AUC-curve
-def plot_auc(labels, probs):
+def plot_auc(labels, probs, model):
     # info regression
     fpr = dict()
     tpr = dict()
@@ -41,10 +38,23 @@ def plot_auc(labels, probs):
     plt.ylim([0.0, 1.])
     plt.xlabel('False Positive Rate (FPR)')
     plt.ylabel('True Positive Rate (TPR)')
-    plt.title('ROC')
+    plt.title(f'ROC of the {model}')
     plt.legend()
     plt.show()
-    
+
+def confussion_matrix(y_test, y_pred, model):
+    cm_regression = confusion_matrix(y_test, y_pred)
+    sns.heatmap(cm_regression,
+                annot=True,
+                cmap="Blues",
+                fmt='d',
+                xticklabels=['T12','T34'],
+                yticklabels=['T12','T34'])
+
+    plt.ylabel('Actual',fontsize=12)
+    plt.xlabel('Prediction',fontsize=12)
+    plt.title(f'Confusion matrix of the {model}')
+    plt.show()
 #%%
 def main():
     # Check missing values
@@ -95,8 +105,8 @@ def main():
     print('Best parameters found:\n', grid_search_regression.best_params_)
     print("Beste score:", grid_search_regression.best_score_)
     print(f"CL Report of PLS-DA:", classification_report(y_validate, y_pred_regression, zero_division='warn'))
-    plot_auc(y_validate, probabilities_regression[:,1])
-
+    plot_auc(y_validate, probabilities_regression[:,1], "Logistic regression model")
+    confussion_matrix(y_validate, y_pred_regression, "Logistic regression model")
 
     # Pipeline PLS-DA
     def squeeze_output(X):
@@ -129,7 +139,8 @@ def main():
     print('Best parameters found:\n', grid_search_pls_da.best_params_)
     print("Beste score:", grid_search_pls_da.best_score_)
     print(f"CL Report of PLS-DA:", classification_report(y_validate, y_pred_pls_da, zero_division='warn'))
-    plot_auc(y_validate, probabilities_pls_da[:,1])
+    plot_auc(y_validate, probabilities_pls_da[:,1], "PLS DA model")
+    confussion_matrix(y_validate, y_pred_pls_da, "PLS DA model")
 
 #%%
 
@@ -224,6 +235,8 @@ def main():
 
     #%% Classifier Evaluation 
 
+
 #%%
 if __name__ == "__main__":
     main()
+# %%
