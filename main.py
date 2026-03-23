@@ -1,4 +1,5 @@
 #%%
+import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -18,7 +19,7 @@ from sklearn.cross_decomposition import PLSRegression
 
 #%% Load Data
 # Load Data
-data = load_data('Trainings_data')
+data = pd.read_csv('hn/Trainings_data.csv', index_col=0)
 print(f'The number of samples: {len(data.index)}')
 print(f'The number of columns: {len(data.columns)}')
 
