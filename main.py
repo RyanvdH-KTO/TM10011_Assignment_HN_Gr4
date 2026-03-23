@@ -131,6 +131,82 @@ def main():
     print(f"CL Report of PLS-DA:", classification_report(y_validate, y_pred_pls_da, zero_division='warn'))
     plot_auc(y_validate, probabilities_pls_da[:,1])
 
+    # (Lineair) Support Vector Machine
+    pipeline_SVM = Pipeline(steps=[
+    ('classifier', SVC(random_state=42, 
+                     max_iter=5000, 
+                     class_weight='balanced', 
+                     kernel = 'linear'
+                     )) 
+                     ])
+    
+    param_grid_SVM = {
+    'classifier__kernel': ['linear', 'poly', 'rbf', 'sigmoid'],
+    'classifier__C': [0.0001, 0.001, 0.01, 1, 5, 10, 100, 1000],
+    'classifier__gamma':['auto', 'scale', 0.0001, 0.001, 0.01, 1, 10, 100, 1000],
+    'classifier__class_weight': ['none', 'balanced'],
+    'classifier__shrinking':[True, False],
+    'classifier__tol':[1, 0.1, 1e-2, 1e-3, 1e-4]}
+
+    grid_search_SVM = GridSearchCV(
+    pipeline_SVM,
+    param_grid_SVM,
+    cv=kf, 
+    scoring=["accuracy", "roc_auc", "f1"],
+    refit = "roc_auc",  
+    n_jobs=-1,
+    )
+
+    grid_search_SVM.fit(X_train_filtered, y_train)
+    classifier_SVM = grid_search_SVM.best_estimator_ 
+    y_pred_SVM = classifier_SVM.predict(X_validate_filtered) 
+    probabilities_SVM = classifier_SVM.predict_proba(X_validate_filtered)
+
+    print('Best parameters found:\n', grid_search_SVM.best_params_)
+    print("Beste score:", grid_search_SVM.best_score_)
+    print(f"CL Report of PLS-DA:", classification_report(y_validate, y_pred_SVM, zero_division='warn'))
+    plot_auc(y_validate, probabilities_SVM[:,1])
+
+
+
+
+
+     #%Gradient Boosting
+    pipeline_XGB = Pipeline(steps=[
+        ('classifier', xgb.XGBClassifier(
+        random_state=42,
+        n_estimators=1000,
+        max_depth=10,
+        learning_rate=0.1)) 
+        ])
+    
+    param_grid_XGB = {
+    'classifier__n_estimators': [100, 300, 500],
+    'classifier__max_depth': [3, 5, 7],
+    'classifier__learning_rate': [0.01, 0.05, 0.1],
+    'classifier__subsample': [0.8, 1.0],
+    'classifier__colsample_bytree': [0.8, 1.0]}
+
+    grid_search_XGB = GridSearchCV(
+    pipeline_XGB,
+    param_grid_XGB,
+    cv=kf, 
+    scoring=["accuracy", "roc_auc", "f1"], 
+    refit = "roc_auc",
+    n_jobs=-1,
+    )
+
+    grid_search_XGB.fit(X_train_filtered, y_train) 
+    classifier_XGB = grid_search_XGB.best_estimator_ 
+    y_pred_XGB = classifier_XGB.predict(X_validate_filtered)  
+    propabilities_XGB = classifier_XGB.predict_proba(X_validate_filtered)[:, 1]
+
+    print('Best parameters found:\n', grid_search_XGB.best_params_)
+    print("Beste score:", grid_search_XGB.best_score_)
+    print(f"CL Report of PLS-DA:", classification_report(y_validate, y_pred_XGB, zero_division='warn'))
+    plot_auc(y_validate, propabilities_XGB[:,1])
+
+
 #%%
 
     #Pipeline that compares feature selectors and classifiers
