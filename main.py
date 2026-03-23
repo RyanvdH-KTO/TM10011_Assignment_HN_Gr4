@@ -18,7 +18,7 @@ from sklearn.cross_decomposition import PLSRegression
 
 #%% Load Data
 # Load Data
-
+data = load_data('Trainings_data')
 print(f'The number of samples: {len(data.index)}')
 print(f'The number of columns: {len(data.columns)}')
 
