@@ -124,7 +124,7 @@ def sfs_selection(X_train, X_test, y_train, estimator, direction="forward", scor
 
 # Plot AUC-curve & confusion matrix
 
-def AUC_plot_and_confusion_matrix(labels, probs, y_test, y_pred, model):
+def AUC_plot_and_confusion_matrix(labels, probs, y_test, y_pred, model, test=False):
     # info
     fpr = dict()
     tpr = dict()
@@ -132,6 +132,9 @@ def AUC_plot_and_confusion_matrix(labels, probs, y_test, y_pred, model):
     fpr, tpr, _ = roc_curve(labels.values.ravel(), probs.ravel())
     roc_auc = auc(fpr, tpr)
     
+    if test == True:
+        model = model + " with testset"
+
     fig,(ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
 
     ax1.plot(fpr, tpr, color='blue', linewidth=2.5, label=f'AUC: {roc_auc:.3f}', linestyle='solid')

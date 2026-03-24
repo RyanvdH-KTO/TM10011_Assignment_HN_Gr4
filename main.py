@@ -123,7 +123,7 @@ def main():
     print('Best parameters found:\n', grid_search_regression.best_params_)
     print("Beste score:", grid_search_regression.best_score_)
     print(f"CL Report of LR:", classification_report(y_validate, y_pred_regression, zero_division='warn'))
-    AUC_plot_and_confusion_matrix(y_validate, probabilities_regression, y_validate, y_pred_regression, "Logistic regression model")
+    AUC_plot_and_confusion_matrix(y_validate, probabilities_regression, y_validate, y_pred_regression, "Logistic regression model", test=True)
 
     #--------------------------------------------------------------
     # Pipeline PLS-DA
@@ -153,7 +153,7 @@ def main():
                                     cv=kf, scoring=scoring, refit = True, n_jobs=-1)
     
     grid_search_pls_da.fit(X_train_filtered, y_train)
-    print(grid_search_pls_da)
+
     classifier_PLS_DA = grid_search_pls_da.best_estimator_ 
     y_pred_pls_da = classifier_PLS_DA.predict(X_validate_filtered)
     probabilities_pls_da = classifier_PLS_DA.predict_proba(X_validate_filtered)
@@ -226,6 +226,7 @@ def main():
     print(f"Best Selector: {best_selector}")
 
     grid_search_SVM.fit(X_train_filtered, y_train)
+
     classifier_SVM = grid_search_SVM.best_estimator_ 
     y_pred_SVM = classifier_SVM.predict(X_validate_filtered) 
     probabilities_SVM = classifier_SVM.predict_proba(X_validate_filtered)
@@ -256,7 +257,8 @@ def main():
     grid_search_XGB = GridSearchCV(pipeline_XGB, param_grid_XGB, 
                                 cv=kf, scoring=scoring, refit = True, n_jobs=-1)
 
-    grid_search_XGB.fit(X_train_filtered, y_train) 
+    grid_search_XGB.fit(X_train_filtered, y_train)
+
     classifier_XGB = grid_search_XGB.best_estimator_ 
     y_pred_XGB = classifier_XGB.predict(X_validate_filtered)  
     propabilities_XGB = classifier_XGB.predict_proba(X_validate_filtered)[:, 1]
@@ -273,7 +275,7 @@ def main():
 #%% Run model
 # Run model
 if __name__ == "__main__":
-    LR, PLS_DA, SVM, GXB = main()
+    classifier_LR, classifier_PLS_DA, classifier_SVM, classifier_XGB = main()
 
 #%% Load Test Data
 # Load Test Data
@@ -281,4 +283,36 @@ test_data = pd.read_csv('hn/Test_data.csv', index_col=0)
 print(f'The number of samples: {len(test_data.index)}')
 print(f'The number of columns: {len(test_data.columns)}')
 print(test_data['label'].value_counts())
+
+x_test, y_test = split_features_target(test_data)
 # %%
+
+# LR test
+y_pred_regression = classifier_LR.predict(X_validate_best)
+probabilities_regression = classifier_LR.predict_proba(X_validate_best)[:, 1]
+
+print(f"CL Report of LR:", classification_report(y_validate, y_pred_regression, zero_division='warn'))
+AUC_plot_and_confusion_matrix(y_validate, probabilities_regression, y_validate, y_pred_regression, "Logistic regression model")
+
+# PLS-DA test
+y_pred_pls_da = classifier_PLS_DA.predict(X_validate_filtered)
+probabilities_pls_da = classifier_PLS_DA.predict_proba(X_validate_filtered)
+
+print(f"CL Report of PLS-DA:", classification_report(y_validate, y_pred_pls_da, zero_division='warn'))
+AUC_plot_and_confusion_matrix(y_validate, probabilities_pls_da[:,1], y_validate, y_pred_pls_da, "PLS DA model")
+
+# SVM test
+y_pred_SVM = classifier_SVM.predict(X_validate_filtered) 
+probabilities_SVM = classifier_SVM.predict_proba(X_validate_filtered)
+
+print(f"CL Report of SVM:", classification_report(y_validate, y_pred_SVM, zero_division='warn'))
+AUC_plot_and_confusion_matrix(y_validate, probabilities_SVM[:,1], y_validate, y_pred_SVM, "Support vector machine")
+    
+# XGB test
+y_pred_XGB = classifier_XGB.predict(X_validate_filtered)  
+propabilities_XGB = classifier_XGB.predict_proba(X_validate_filtered)[:, 1]
+if propabilities_XGB.ndim == 1:
+    propabilities_XGB = np.column_stack([1 - propabilities_XGB, propabilities_XGB])
+
+print(f"CL Report of XGB:", classification_report(y_validate, y_pred_XGB, zero_division='warn'))
+AUC_plot_and_confusion_matrix(y_validate, propabilities_XGB[:,1], y_validate, y_pred_XGB, "XGBoost model")
