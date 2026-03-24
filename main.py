@@ -40,7 +40,7 @@ def main():
     )
 
     #Scale features
-    X_train_scaled, X_validate_scaled, scaler = scale_features(X_train, X_validate)
+    X_train_scaled, X_validate_scaled, scaler = scale_features(X_train, X_validate, "minmax")
 
     print("Train shape:", X_train_scaled.shape)
     print("Validation shape:", X_validate_scaled.shape)
@@ -123,7 +123,7 @@ def main():
     print('Best parameters found:\n', grid_search_regression.best_params_)
     print("Beste score:", grid_search_regression.best_score_)
     print(f"CL Report of LR:", classification_report(y_validate, y_pred_regression, zero_division='warn'))
-    AUC_plot_and_confusion_matrix(y_validate, probabilities_regression, y_validate, y_pred_regression, "Logistic regression model", test=True)
+    AUC_plot_and_confusion_matrix(y_validate, probabilities_regression, y_validate, y_pred_regression, "Logistic regression model")
 
     #--------------------------------------------------------------
     # Pipeline PLS-DA
@@ -139,6 +139,7 @@ def main():
                         penalty='elasticnet',
                         solver='saga',
                         class_weight='balanced',
+                        l1_ratio=0.85,
                         random_state=42,
                         max_iter=1000
                         ))
