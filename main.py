@@ -122,7 +122,7 @@ def main():
 
     print('Best parameters found:\n', grid_search_regression.best_params_)
     print("Beste score:", grid_search_regression.best_score_)
-    print(f"CL Report of LR:", classification_report(y_validate, y_pred_regression, zero_division='warn'))
+    print(f"CL Report of LR:\n", classification_report(y_validate, y_pred_regression, zero_division='warn'))
     AUC_plot_and_confusion_matrix(y_validate, probabilities_regression, y_validate, y_pred_regression, "Logistic regression model")
 
     #--------------------------------------------------------------
@@ -161,7 +161,7 @@ def main():
 
     print('Best parameters found:\n', grid_search_pls_da.best_params_)
     print("Beste score:", grid_search_pls_da.best_score_)
-    print(f"CL Report of PLS-DA:", classification_report(y_validate, y_pred_pls_da, zero_division='warn'))
+    print(f"CL Report of PLS-DA:\n", classification_report(y_validate, y_pred_pls_da, zero_division='warn'))
     AUC_plot_and_confusion_matrix(y_validate, probabilities_pls_da[:,1], y_validate, y_pred_pls_da, "PLS DA model")
 
     #--------------------------------------------------------------
@@ -234,7 +234,7 @@ def main():
 
     print('Best parameters found:\n', grid_search_SVM.best_params_)
     print("Beste score:", grid_search_SVM.best_score_)
-    print(f"CL Report of SVM:", classification_report(y_validate, y_pred_SVM, zero_division='warn'))
+    print(f"CL Report of SVM:\n", classification_report(y_validate, y_pred_SVM, zero_division='warn'))
     AUC_plot_and_confusion_matrix(y_validate, probabilities_SVM[:,1], y_validate, y_pred_SVM, "Support vector machine")
     
     #--------------------------------------------------------------
@@ -268,7 +268,7 @@ def main():
 
     print('Best parameters found:\n', grid_search_XGB.best_params_)
     print("Beste score:", grid_search_XGB.best_score_)
-    print(f"CL Report of XGB:", classification_report(y_validate, y_pred_XGB, zero_division='warn'))
+    print(f"CL Report of XGB:\n", classification_report(y_validate, y_pred_XGB, zero_division='warn'))
     AUC_plot_and_confusion_matrix(y_validate, propabilities_XGB[:,1], y_validate, y_pred_XGB, "XGBoost model")
 
     return classifier_LR, classifier_PLS_DA, classifier_SVM, classifier_XGB
