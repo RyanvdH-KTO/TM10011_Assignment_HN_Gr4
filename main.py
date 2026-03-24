@@ -2,17 +2,15 @@
 # Import packages
 import numpy as np
 import pandas as pd
-import seaborn as sns
 import xgboost as xgb
 from sklearn.svm import SVC
-import matplotlib.pyplot as plt
 from sklearn.pipeline import Pipeline
+from sklearn.metrics import classification_report
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import FunctionTransformer
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.model_selection import train_test_split, StratifiedKFold, GridSearchCV
-from sklearn.metrics import roc_curve, auc, confusion_matrix, classification_report
-from functions import check_missing_values, split_features_target, scale_features, rfe_selection, sfs_selection, remove_correlated_features
+from functions import check_missing_values, split_features_target, scale_features, rfe_selection, sfs_selection, remove_correlated_features, plot
 
 #%% Load Data
 # Load Training Data
@@ -21,39 +19,6 @@ print(f'The number of samples: {len(data.index)}')
 print(f'The number of columns: {len(data.columns)}')
 print(data['label'].value_counts())
 
-#%% Def Plot AUC-curve & confusion matrix
-# Def Plot AUC-curve & confusion matrix
-def plot(labels, probs, y_test, y_pred, model):
-    # info
-    fpr = dict()
-    tpr = dict()
-    roc_auc = dict()
-    fpr, tpr, _ = roc_curve(labels.values.ravel(), probs.ravel())
-    roc_auc = auc(fpr, tpr)
-    
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
-
-    ax1.plot(fpr, tpr, color='blue', linewidth=2.5, label=f'AUC: {roc_auc:.3f}', linestyle='solid')
-    ax1.plot([0, 1], [0, 1], color='grey', linestyle=(0, (5, 10)), label='Random prediction')
-    ax1.set_xlim([0.0, 1.0])
-    ax1.set_ylim([0.0, 1.05])
-    ax1.set_xlabel('False Positive Rate (FPR)', fontsize=12)
-    ax1.set_ylabel('True Positive Rate (TPR)', fontsize=12)
-    ax1.set_title(f'ROC Curve\n{model}', fontsize=14, fontweight='bold')
-    ax1.legend(fontsize=11)
-    ax1.grid()
-    
-    cm = confusion_matrix(y_test, y_pred)
-    sns.heatmap(cm, annot=True, cmap="Blues", fmt='d', ax=ax2,
-                xticklabels=['T12','T34'], 
-                yticklabels=['T12','T34'],
-                cbar_kws={'label': 'Count'})
-    ax2.set_title(f'Confusion Matrix\n{model}', fontsize=14, fontweight='bold')
-    ax2.set_xlabel('Predicted', fontsize=12)
-    ax2.set_ylabel('Actual', fontsize=12)
-    
-    plt.tight_layout()
-    plt.show()
 #%% Def Preprocessing & Classifier training
 # Def Preprocessing & Classifier training
 def main():
@@ -86,7 +51,7 @@ def main():
 
     # Define k-fold
     kf = StratifiedKFold(n_splits=10, shuffle=True, random_state=42)
-    print(y_train)
+
     #--------------------------------------------------------------
     # Pipeline Logistic regression
     pipeline_regression = Pipeline(steps=[
