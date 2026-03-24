@@ -88,12 +88,13 @@ def main():
 
     # Pipeline Logistic regression
     pipeline_regression = Pipeline(steps=[
-        ('classifier', LogisticRegression(penalty='l1', solver='saga', class_weight='balanced', random_state=42, max_iter=10000))
+        ('classifier', LogisticRegression(penalty='l1', solver='saga', class_weight='balanced', random_state=42, max_iter=1000))
     ])
 
     param_grid_regression = {
         'classifier__C': [0.001, 0.01, 0.1, 1, 10],
-        'classifier__penalty': ['l1', 'l2', 'elasticnet']
+        'classifier__penalty': ['l1', 'l2', 'elasticnet'],
+        'classifier__solver': ['liblinear', 'saga']
     }
 
     grid_search_regression = GridSearchCV(pipeline_regression, param_grid_regression, cv=kf, scoring=["accuracy", "roc_auc", "f1"], refit = 'roc_auc', n_jobs=-1)
@@ -120,7 +121,7 @@ def main():
         ('squeeze', FunctionTransformer(squeeze_output)),
         ('classifier', LogisticRegression(
             penalty='elasticnet', solver='saga', class_weight='balanced', 
-            random_state=42, max_iter=10
+            random_state=42, max_iter=1000
         ))
     ])
 
