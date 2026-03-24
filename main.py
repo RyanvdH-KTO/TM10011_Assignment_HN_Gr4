@@ -19,6 +19,14 @@ from functions import plot_correlation_matrix
 from sklearn.preprocessing import FunctionTransformer
 from sklearn.cross_decomposition import PLSRegression
 
+
+
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.feature_selection import SelectKBest, f_classif, RFE
+from sklearn.model_selection import GridSearchCV, StratifiedKFold
+from sklearn.svm import SVC
+from sklearn.linear_model import LogisticRegression
 #%% Load Data
 # Load Data
 data = pd.read_csv('hn/Trainings_data.csv', index_col=0)
@@ -224,6 +232,66 @@ def main():
     print(f"CL Report of XGB:", classification_report(y_validate, y_pred_XGB, zero_division='warn'))
     plot_auc(y_validate, propabilities_XGB[:,1], "XGBoost model")
     confussion_matrix(y_validate, y_pred_XGB, "XGBoost model")
+
+
+#----------------------------- test gedeelte begin
+    test_dit_gedeelte = False
+
+    if test_dit_gedeelte == True
+        rfe_estimator = LogisticRegression(
+            penalty='l2',
+            solver='liblinear',
+            class_weight='balanced',
+            random_state=42,
+            max_iter=10000
+        )
+
+        pipeline_SVM = Pipeline(steps=[
+            ('scaler', StandardScaler()),
+            ('selector', 'passthrough'),
+            ('classifier', SVC(
+                random_state=42,
+                max_iter=5000,
+                class_weight='balanced',
+                probability=True))])
+
+        param_grid_SVM = [{
+                'selector': ['passthrough'],
+                'classifier__kernel': ['linear', 'rbf'],
+                'classifier__C': [0.0001, 0.001, 0.01, 1, 5, 10, 100],
+                'classifier__gamma': ['scale', 'auto', 0.001, 0.01, 0.1, 1]},
+                {'selector': [SelectKBest(score_func=f_classif)],
+                'selector__k': [5, 10, 15, 20],
+                'classifier__kernel': ['linear', 'rbf'],
+                'classifier__C': [0.0001, 0.001, 0.01, 1, 5, 10, 100],
+                'classifier__gamma': ['scale', 'auto', 0.001, 0.01, 0.1, 1]},
+                {'selector': [RFE(estimator=rfe_estimator)],
+                'selector__n_features_to_select': [5, 10, 15, 20],
+                'classifier__kernel': ['linear', 'rbf'],
+                'classifier__C': [0.0001, 0.001, 0.01, 1, 5, 10, 100],
+                'classifier__gamma': ['scale', 'auto', 0.001, 0.01, 0.1, 1]}]
+
+        grid_search_SVM = GridSearchCV(
+            pipeline_SVM,
+            param_grid_SVM,
+            cv=StratifiedKFold(n_splits=10, shuffle=True, random_state=42),
+            scoring=["accuracy", "roc_auc", "f1"],
+            refit="roc_auc",
+            n_jobs=-1)
+
+        grid_search_SVM.fit(X_train, y_train)
+
+        classifier_SVM = grid_search_SVM.best_estimator_
+        y_pred_SVM = classifier_SVM.predict(X_validate)
+        probabilities_SVM = classifier_SVM.predict_proba(X_validate)
+
+        print("Best parameters found for test gedeelte:\n", grid_search_SVM.best_params_)
+        print("Beste score:", grid_search_SVM.best_score_)
+        print(classification_report(y_validate, y_pred_SVM, zero_division='warn'))
+        plot_auc(y_validate, probabilities_SVM[:, 1], "Support vector machine")
+        confussion_matrix(y_validate, y_pred_SVM, "Support vector machine")
+
+#------------------------------ test gedeelte einde
 
 #%% Run model
 # Run model
