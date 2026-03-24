@@ -271,47 +271,56 @@ def main():
     print(f"CL Report of XGB:\n", classification_report(y_validate, y_pred_XGB, zero_division='warn'))
     AUC_plot_and_confusion_matrix(y_validate, propabilities_XGB[:,1], y_validate, y_pred_XGB, "XGBoost model")
 
-    return classifier_LR, classifier_PLS_DA, classifier_SVM, classifier_XGB
+    return classifier_LR, classifier_PLS_DA, classifier_SVM, classifier_XGB, LR_selector, SVM_selector
 
 #%% Run model
 # Run model
 if __name__ == "__main__":
-    classifier_LR, classifier_PLS_DA, classifier_SVM, classifier_XGB = main()
+    classifier_LR, classifier_PLS_DA, classifier_SVM, classifier_XGB, LR_selector, SMV_selector = main()
 
-#%% Load Test Data
+#%% Test with Test Data
 # Load Test Data
 test_data = pd.read_csv('hn/Test_data.csv', index_col=0)
 print(f'The number of samples: {len(test_data.index)}')
 print(f'The number of columns: {len(test_data.columns)}')
 print(test_data['label'].value_counts())
 
+# Preprocessing
+check_missing_values(test_data)
+X_train, y_train = split_features_target(data)
 X_test, y_test = split_features_target(test_data)
-# %%
+X_train_scaled, X_test_scaled, scaler = scale_features(X_train, X_test)
+X_train_filtered, X_test_filtered, to_drop, surviving_cols = remove_correlated_features(X_train_scaled, X_test_scaled)
+X_test_cleaned = []
 
+print("Test shape:", X_test_filtered.shape)
+print("Label distribution training set:\n", y_test.value_counts())
+
+#%%
 # LR test
-y_pred_regression = classifier_LR.predict(X_test)
-probabilities_regression = classifier_LR.predict_proba(X_test)[:, 1]
+y_pred_regression = classifier_LR.predict(X_test_cleaned)
+probabilities_regression = classifier_LR.predict_proba(X_test_cleaned)[:, 1]
 
 print(f"CL Report of LR:", classification_report(y_test, y_pred_regression, zero_division='warn'))
 AUC_plot_and_confusion_matrix(y_test, probabilities_regression, y_test, y_pred_regression, "Logistic regression model", test=True)
 
 # PLS-DA test
-y_pred_pls_da = classifier_PLS_DA.predict(X_test)
-probabilities_pls_da = classifier_PLS_DA.predict_proba(X_test)
+y_pred_pls_da = classifier_PLS_DA.predict(X_test_cleaned)
+probabilities_pls_da = classifier_PLS_DA.predict_proba(X_test_cleaned)
 
 print(f"CL Report of PLS-DA:", classification_report(y_test, y_pred_pls_da, zero_division='warn'))
 AUC_plot_and_confusion_matrix(y_test, probabilities_pls_da[:,1], y_test, y_pred_pls_da, "PLS DA model", test=True)
 
 # SVM test
-y_pred_SVM = classifier_SVM.predict(X_test) 
-probabilities_SVM = classifier_SVM.predict_proba(X_test)
+y_pred_SVM = classifier_SVM.predict(X_test_cleaned) 
+probabilities_SVM = classifier_SVM.predict_proba(X_test_cleaned)
 
 print(f"CL Report of SVM:", classification_report(y_test, y_pred_SVM, zero_division='warn'))
 AUC_plot_and_confusion_matrix(y_test, probabilities_SVM[:,1], y_test, y_pred_SVM, "Support vector machine", test=True)
     
 # XGB test
-y_pred_XGB = classifier_XGB.predict(X_test)  
-propabilities_XGB = classifier_XGB.predict_proba(X_test)[:, 1]
+y_pred_XGB = classifier_XGB.predict(X_test_cleaned)  
+propabilities_XGB = classifier_XGB.predict_proba(X_test_cleaned)[:, 1]
 if propabilities_XGB.ndim == 1:
     propabilities_XGB = np.column_stack([1 - propabilities_XGB, propabilities_XGB])
 
