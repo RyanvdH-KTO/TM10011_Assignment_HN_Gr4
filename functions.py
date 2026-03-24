@@ -1,22 +1,13 @@
 # %%
-import pandas as pd
 import numpy as np
-import seaborn
-import matplotlib.pyplot as plt
+import pandas as pd
 import seaborn as sns
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
-from sklearn.feature_selection import VarianceThreshold
-from sklearn.preprocessing import StandardScaler
-from sklearn.preprocessing import LabelEncoder
-from sklearn.feature_selection import SelectKBest
-from sklearn.feature_selection import f_classif
+import matplotlib.pyplot as plt
 from sklearn.feature_selection import RFE
-from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import roc_curve, auc, confusion_matrix 
 from sklearn.feature_selection import SequentialFeatureSelector
-from sklearn.decomposition import PCA
-
-
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
 
 # Missing data functie
 def check_missing_values(data):
@@ -103,24 +94,6 @@ def plot_correlation_matrix(X_train, to_drop, feature_names=None):
 
 #%% Feature selectors
 
-# Univariate feature selection: kiest de beste k features op basis van hun individuele relatie met de target
-def select_k_best_anova(X_train, X_test, y_train, k=10): #k zegt hoeveel features je wil
-    selector = SelectKBest(score_func=f_classif, k=k) #SelectKBest: kijkt naar alle features afzonderlijk, geeft elke feature een score, en kiest daarna de k hoogste scores
-                                                      # f_classif: betekent dat je de ANOVA F-test gebruikt
-    X_train_sel = selector.fit_transform(X_train, y_train)
-    X_test_sel = selector.transform(X_test)
-
-    # selected_indices = selector.get_support(indices=True) #welke features gekozen zijn
-    # scores = selector.scores_ #ANOVA scores per feature
-
-    # print("Selected feature indices:", selected_indices)
-    # print("Scores of all features:", scores)
-    # print("Shape train after selection:", X_train_sel.shape)
-    # print("Shape test after selection:", X_test_sel.shape)
-
-    return X_train_sel, X_test_sel
-
-# %%
 # RFE: recursive feature elimination
 def rfe_selection(X_train, X_test, y_train, estimator, n_features=10):
 
@@ -129,17 +102,7 @@ def rfe_selection(X_train, X_test, y_train, estimator, n_features=10):
     X_train_sel = selector.fit_transform(X_train, y_train)
     X_test_sel = selector.transform(X_test)
 
-    # selected_indices = selector.get_support(indices=True)
-    #ranking = selector.ranking_
-
-    #print("Selected feature indices:", selected_indices)
-    #print("Ranking of all features:", ranking) #Ranking zegt iets over in welke ronde de feature eruit is gegooid
-    #print("Shape train after selection:", X_train_sel.shape)
-    #print("Shape test after selection:", X_test_sel.shape)
-
-    return X_train_sel, X_test_sel #, selected_indices
-
-# %%
+    return X_train_sel, X_test_sel
 
 # Sequential Feature Selector
 def sfs_selection(X_train, X_test, y_train, estimator, direction="forward", scoring="accuracy", cv=5): # accuracy kan ook met f1 of ROC-AUC, dat nog goed beargumenteren
@@ -156,22 +119,40 @@ def sfs_selection(X_train, X_test, y_train, estimator, direction="forward", scor
     X_train_sel = selector.fit_transform(X_train, y_train)
     X_test_sel = selector.transform(X_test)
 
-    #selected_indices = selector.get_support(indices=True)
+    return X_train_sel, X_test_sel
 
-    # print("Selected feature indices:", selected_indices)
-    # print("Shape train after selection:", X_train_sel.shape)
-    # print("Shape test after selection:", X_test_sel.shape)
 
-    return X_train_sel, X_test_sel #, selected_indices
+#%% Plot AUC-curve & confusion matrix
 
-#PCA feature selection 
-def pca_selection(X_train, X_test, n_components=0.95):
-    pca = PCA(n_components=n_components)
+def plot(labels, probs, y_test, y_pred, model):
+    # info
+    fpr = dict()
+    tpr = dict()
+    roc_auc = dict()
+    fpr, tpr, _ = roc_curve(labels.values.ravel(), probs.ravel())
+    roc_auc = auc(fpr, tpr)
     
-    X_train_pca = pca.fit_transform(X_train)  # fit on train only
-    X_test_pca = pca.transform(X_test)        # apply to test
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
 
-    return X_train_pca, X_test_pca
-
-
+    ax1.plot(fpr, tpr, color='blue', linewidth=2.5, label=f'AUC: {roc_auc:.3f}', linestyle='solid')
+    ax1.plot([0, 1], [0, 1], color='grey', linestyle=(0, (5, 10)), label='Random prediction')
+    ax1.set_xlim([0.0, 1.0])
+    ax1.set_ylim([0.0, 1.05])
+    ax1.set_xlabel('False Positive Rate (FPR)', fontsize=12)
+    ax1.set_ylabel('True Positive Rate (TPR)', fontsize=12)
+    ax1.set_title(f'ROC Curve\n{model}', fontsize=14, fontweight='bold')
+    ax1.legend(fontsize=11)
+    ax1.grid()
+    
+    cm = confusion_matrix(y_test, y_pred)
+    sns.heatmap(cm, annot=True, cmap="Blues", fmt='d', ax=ax2,
+                xticklabels=['T12','T34'], 
+                yticklabels=['T12','T34'],
+                cbar_kws={'label': 'Count'})
+    ax2.set_title(f'Confusion Matrix\n{model}', fontsize=14, fontweight='bold')
+    ax2.set_xlabel('Predicted', fontsize=12)
+    ax2.set_ylabel('Actual', fontsize=12)
+    
+    plt.tight_layout()
+    plt.show()
 # %%
