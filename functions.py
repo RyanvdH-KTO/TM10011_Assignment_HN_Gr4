@@ -111,7 +111,6 @@ def sfs_selection(X_train, X_test, y_train, estimator, direction="forward", scor
     selector = SequentialFeatureSelector(
         estimator=estimator,
         n_features_to_select="auto",
-        tol=0.01,
         direction=direction,
         scoring=scoring,
         cv=cv,
