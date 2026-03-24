@@ -74,7 +74,7 @@ def main():
                                         cv=kf, scoring=scoring, refit = True, n_jobs=-1)
     
     # SFS Forward
-    X_train_sfs_fwd, X_validate_sfs_fwd, indices_sfs_fwd = sfs_selection(
+    X_train_sfs_fwd_LR, X_validate_sfs_fwd_LR, indices_sfs_fwd_LR = sfs_selection(
         X_train_filtered,
         X_validate_filtered,
         y_train,
@@ -85,7 +85,7 @@ def main():
         )
 
     # SFS backward
-    X_train_sfs_bwd, X_validate_sfs_bwd, indices_sfs_bwd = sfs_selection(
+    X_train_sfs_bwd_LR, X_validate_sfs_bwd_LR, indices_sfs_bwd_LR = sfs_selection(
         X_train_filtered,
         X_validate_filtered,
         y_train,
@@ -96,7 +96,7 @@ def main():
         )
 
     # RFE
-    X_train_rfe, X_validate_rfe, indices_rfe = rfe_selection(
+    X_train_rfe_LR, X_validate_rfe_LR, indices_rfe_LR = rfe_selection(
         X_train_filtered,
         X_validate_filtered,
         y_train,
@@ -104,21 +104,21 @@ def main():
         n_features=10
         )
     
-    selector_data = {
-    "SFS_fwd": (X_train_sfs_fwd, X_validate_sfs_fwd, indices_sfs_fwd),
-    "SFS_bwd": (X_train_sfs_bwd, X_validate_sfs_bwd, indices_sfs_bwd),
-    "RFE": (X_train_rfe, X_validate_rfe, indices_rfe)
+    selector_data_LR = {
+    "SFS_fwd": (X_train_sfs_fwd_LR, X_validate_sfs_fwd_LR, indices_sfs_fwd_LR),
+    "SFS_bwd": (X_train_sfs_bwd_LR, X_validate_sfs_bwd_LR, indices_sfs_bwd_LR),
+    "RFE": (X_train_rfe_LR, X_validate_rfe_LR, indices_rfe_LR)
     }
 
-    best_selector = max(selector_data, key=lambda k: grid_search_regression.fit(selector_data[k][0], y_train).score(selector_data[k][1], y_validate))
-    print(f"Best Selector: {best_selector}")
+    best_selector_LR = max(selector_data_LR, key=lambda k: grid_search_regression.fit(selector_data_LR[k][0], y_train).score(selector_data_LR[k][1], y_validate))
+    print(f"Best Selector: {best_selector_LR}")
 
-    X_train_best, X_validate_best = selector_data[best_selector]
-    grid_search_regression.fit(X_train_best, y_train)
+    X_train_best_LR, X_validate_best_LR, LR_selector = selector_data_LR[best_selector_LR]
+    grid_search_regression.fit(X_train_best_LR, y_train)
 
     classifier_LR = grid_search_regression.best_estimator_
-    y_pred_regression = classifier_LR.predict(X_validate_best)
-    probabilities_regression = classifier_LR.predict_proba(X_validate_best)[:, 1]
+    y_pred_regression = classifier_LR.predict(X_validate_best_LR)
+    probabilities_regression = classifier_LR.predict_proba(X_validate_best_LR)[:, 1]
 
     print('Best parameters found:\n', grid_search_regression.best_params_)
     print("Beste score:", grid_search_regression.best_score_)
@@ -187,7 +187,7 @@ def main():
                                 cv=kf, scoring=scoring, refit = True, n_jobs=-1)
 
     # SFS Forward
-    X_train_sfs_fwd, X_validate_sfs_fwd, indices_sfs_fwd = sfs_selection(
+    X_train_sfs_fwd_SVM, X_validate_sfs_fwd_SVM, indices_sfs_fwd_SVM = sfs_selection(
         X_train_filtered,
         X_validate_filtered,
         y_train,
@@ -198,7 +198,7 @@ def main():
         )
 
     # SFS backward
-    X_train_sfs_bwd, X_validate_sfs_bwd, indices_sfs_bwd = sfs_selection(
+    X_train_sfs_bwd_SVM, X_validate_sfs_bwd_SVM, indices_sfs_bwd_SVM = sfs_selection(
         X_train_filtered,
         X_validate_filtered,
         y_train,
@@ -209,7 +209,7 @@ def main():
         )
 
     # RFE
-    X_train_rfe, X_validate_rfe, indices_rfe = rfe_selection(
+    X_train_rfe_SVM, X_validate_rfe_SVM, indices_rfe_SVM = rfe_selection(
         X_train_filtered,
         X_validate_filtered,
         y_train,
@@ -217,20 +217,21 @@ def main():
         n_features=10
         )
     
-    selector_data = {
-    "SFS_fwd": (X_train_sfs_fwd, X_validate_sfs_fwd, indices_sfs_fwd),
-    "SFS_bwd": (X_train_sfs_bwd, X_validate_sfs_bwd, indices_sfs_bwd),
-    "RFE": (X_train_rfe, X_validate_rfe, indices_rfe)
+    selector_data_SVM = {
+    "SFS_fwd": (X_train_sfs_fwd_SVM, X_validate_sfs_fwd_SVM, indices_sfs_fwd_SVM),
+    "SFS_bwd": (X_train_sfs_bwd_SVM, X_validate_sfs_bwd_SVM, indices_sfs_bwd_SVM),
+    "RFE": (X_train_rfe_SVM, X_validate_rfe_SVM, indices_rfe_SVM)
     }
 
-    best_selector = max(selector_data, key=lambda k: grid_search_SVM.fit(selector_data[k][0], y_train).score(selector_data[k][1], y_validate))
-    print(f"Best Selector: {best_selector}")
+    best_selector_SVM = max(selector_data_SVM, key=lambda k: grid_search_SVM.fit(selector_data_SVM[k][0], y_train).score(selector_data_SVM[k][1], y_validate))
+    print(f"Best Selector: {best_selector_SVM}")
 
-    grid_search_SVM.fit(X_train_filtered, y_train)
+    X_train_best_SVM, X_validate_best_SVM, SVM_selector = selector_data_SVM[best_selector_SVM]
+    grid_search_SVM.fit(X_train_best_SVM, y_train)
 
     classifier_SVM = grid_search_SVM.best_estimator_ 
-    y_pred_SVM = classifier_SVM.predict(X_validate_filtered) 
-    probabilities_SVM = classifier_SVM.predict_proba(X_validate_filtered)
+    y_pred_SVM = classifier_SVM.predict(X_validate_best_SVM) 
+    probabilities_SVM = classifier_SVM.predict_proba(X_validate_best_SVM)
 
     print('Best parameters found:\n', grid_search_SVM.best_params_)
     print("Beste score:", grid_search_SVM.best_score_)
@@ -271,12 +272,12 @@ def main():
     print(f"CL Report of XGB:\n", classification_report(y_validate, y_pred_XGB, zero_division='warn'))
     AUC_plot_and_confusion_matrix(y_validate, propabilities_XGB[:,1], y_validate, y_pred_XGB, "XGBoost model")
 
-    return classifier_LR, classifier_PLS_DA, classifier_SVM, classifier_XGB, LR_selector, SVM_selector
+    return X_train, classifier_LR, classifier_PLS_DA, classifier_SVM, classifier_XGB, LR_selector, SVM_selector
 
 #%% Run model
 # Run model
 if __name__ == "__main__":
-    classifier_LR, classifier_PLS_DA, classifier_SVM, classifier_XGB, LR_selector, SMV_selector = main()
+    X_train, classifier_LR, classifier_PLS_DA, classifier_SVM, classifier_XGB, LR_selector, SVM_selector = main()
 
 #%% Test with Test Data
 # Load Test Data
@@ -287,40 +288,42 @@ print(test_data['label'].value_counts())
 
 # Preprocessing
 check_missing_values(test_data)
-X_train, y_train = split_features_target(data)
 X_test, y_test = split_features_target(test_data)
 X_train_scaled, X_test_scaled, scaler = scale_features(X_train, X_test)
 X_train_filtered, X_test_filtered, to_drop, surviving_cols = remove_correlated_features(X_train_scaled, X_test_scaled)
-X_test_cleaned = []
+X_test_selected_LR = X_train_filtered[:, LR_selector]
+X_test_selected_SVM = X_train_filtered[:, SVM_selector]
 
 print("Test shape:", X_test_filtered.shape)
+print("Test LR shape", X_test_selected_LR.shape)
+print("Test SVM shape", X_test_selected_SVM.shape)
 print("Label distribution training set:\n", y_test.value_counts())
 
 #%%
 # LR test
-y_pred_regression = classifier_LR.predict(X_test_cleaned)
-probabilities_regression = classifier_LR.predict_proba(X_test_cleaned)[:, 1]
+y_pred_regression = classifier_LR.predict(X_test_selected_LR)
+probabilities_regression = classifier_LR.predict_proba(X_test_selected_LR)[:, 1]
 
 print(f"CL Report of LR:", classification_report(y_test, y_pred_regression, zero_division='warn'))
 AUC_plot_and_confusion_matrix(y_test, probabilities_regression, y_test, y_pred_regression, "Logistic regression model", test=True)
 
 # PLS-DA test
-y_pred_pls_da = classifier_PLS_DA.predict(X_test_cleaned)
-probabilities_pls_da = classifier_PLS_DA.predict_proba(X_test_cleaned)
+y_pred_pls_da = classifier_PLS_DA.predict(X_test_filtered)
+probabilities_pls_da = classifier_PLS_DA.predict_proba(X_test_filtered)
 
 print(f"CL Report of PLS-DA:", classification_report(y_test, y_pred_pls_da, zero_division='warn'))
 AUC_plot_and_confusion_matrix(y_test, probabilities_pls_da[:,1], y_test, y_pred_pls_da, "PLS DA model", test=True)
 
 # SVM test
-y_pred_SVM = classifier_SVM.predict(X_test_cleaned) 
-probabilities_SVM = classifier_SVM.predict_proba(X_test_cleaned)
+y_pred_SVM = classifier_SVM.predict(X_test_selected_SVM) 
+probabilities_SVM = classifier_SVM.predict_proba(X_test_selected_SVM)
 
 print(f"CL Report of SVM:", classification_report(y_test, y_pred_SVM, zero_division='warn'))
 AUC_plot_and_confusion_matrix(y_test, probabilities_SVM[:,1], y_test, y_pred_SVM, "Support vector machine", test=True)
     
 # XGB test
-y_pred_XGB = classifier_XGB.predict(X_test_cleaned)  
-propabilities_XGB = classifier_XGB.predict_proba(X_test_cleaned)[:, 1]
+y_pred_XGB = classifier_XGB.predict(X_test_filtered)  
+propabilities_XGB = classifier_XGB.predict_proba(X_test_filtered)[:, 1]
 if propabilities_XGB.ndim == 1:
     propabilities_XGB = np.column_stack([1 - propabilities_XGB, propabilities_XGB])
 
