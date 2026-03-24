@@ -291,8 +291,8 @@ check_missing_values(test_data)
 X_test, y_test = split_features_target(test_data)
 X_train_scaled, X_test_scaled, scaler = scale_features(X_train, X_test)
 X_train_filtered, X_test_filtered, to_drop, surviving_cols = remove_correlated_features(X_train_scaled, X_test_scaled)
-X_test_selected_LR = X_train_filtered[:, LR_selector]
-X_test_selected_SVM = X_train_filtered[:, SVM_selector]
+X_test_selected_LR = X_test_filtered[:, LR_selector]
+X_test_selected_SVM = X_test_filtered[:, SVM_selector]
 
 print("Test shape:", X_test_filtered.shape)
 print("Test LR shape", X_test_selected_LR.shape)
@@ -303,7 +303,7 @@ print("Label distribution training set:\n", y_test.value_counts())
 # LR test
 y_pred_regression = classifier_LR.predict(X_test_selected_LR)
 probabilities_regression = classifier_LR.predict_proba(X_test_selected_LR)[:, 1]
-
+print(y_pred_regression.shape)
 print(f"CL Report of LR:", classification_report(y_test, y_pred_regression, zero_division='warn'))
 AUC_plot_and_confusion_matrix(y_test, probabilities_regression, y_test, y_pred_regression, "Logistic regression model", test=True)
 

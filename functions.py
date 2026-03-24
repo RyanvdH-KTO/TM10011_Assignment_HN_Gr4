@@ -27,7 +27,7 @@ def check_missing_values(data):
 def split_features_target(data, label_col='label'):
     X = data.drop(columns=[label_col]) 
     y = data[label_col]
-    #eEncode labels: T12 = 0, T34 = 1
+    #Encode labels: T12 = 0, T34 = 1
     y = y.map({'T12': 0, 'T34': 1})
     return X, y
 
@@ -95,7 +95,7 @@ def plot_correlation_matrix(X_train, to_drop, feature_names=None):
 # Feature selectors
 
 # RFE: recursive feature elimination
-def rfe_selection(X_train, X_test, y_train, estimator, n_features=10):
+def rfe_selection(X_train, X_test, y_train, estimator, n_features=5):
 
     selector = RFE(estimator=estimator, n_features_to_select=n_features)
 
