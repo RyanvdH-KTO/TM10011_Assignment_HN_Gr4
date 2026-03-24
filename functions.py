@@ -95,7 +95,7 @@ def plot_correlation_matrix(X_train, to_drop, feature_names=None):
 # Feature selectors
 
 # RFE: recursive feature elimination
-def rfe_selection(X_train, X_test, y_train, estimator, n_features=15):
+def rfe_selection(X_train, X_test, y_train, estimator, n_features=5):
 
     selector = RFE(estimator=estimator, n_features_to_select=n_features)
 
