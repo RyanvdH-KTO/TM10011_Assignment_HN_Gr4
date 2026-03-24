@@ -1,10 +1,12 @@
-#%%
-import os
+#%% Import packages
+# Import packages
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from hn.load_data import load_data
+import xgboost as xgb
+from sklearn.svm import SVC
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import StandardScaler, LabelEncoder, MinMaxScaler, RobustScaler
 from sklearn.feature_selection import SelectKBest, f_classif, RFE, VarianceThreshold
 from sklearn.linear_model import LogisticRegression
@@ -24,7 +26,8 @@ print(f'The number of samples: {len(data.index)}')
 print(f'The number of columns: {len(data.columns)}')
 print(data['label'].value_counts())
 
-#%% Def Plot AUC-curve
+#%% Def Plot AUC-curve & confusion matrix
+# Def Plot AUC-curve & confusion matrix
 def plot_auc(labels, probs, model):
     # info regression
     fpr = dict()
@@ -57,7 +60,8 @@ def confussion_matrix(y_test, y_pred, model):
     plt.xlabel('Prediction',fontsize=12)
     plt.title(f'Confusion matrix of the {model}')
     plt.show()
-#%%
+#%% Def Preprocessing & Classifier training
+# Def Preprocessing & Classifier training
 def main():
     # Check missing values
     check_missing_values(data)
@@ -107,7 +111,7 @@ def main():
 
     print('Best parameters found:\n', grid_search_regression.best_params_)
     print("Beste score:", grid_search_regression.best_score_)
-    print(f"CL Report of PLS-DA:", classification_report(y_validate, y_pred_regression, zero_division='warn'))
+    print(f"CL Report of LR:", classification_report(y_validate, y_pred_regression, zero_division='warn'))
     plot_auc(y_validate, probabilities_regression[:,1], "Logistic regression model")
     confussion_matrix(y_validate, y_pred_regression, "Logistic regression model")
 
@@ -145,22 +149,22 @@ def main():
     plot_auc(y_validate, probabilities_pls_da[:,1], "PLS DA model")
     confussion_matrix(y_validate, y_pred_pls_da, "PLS DA model")
 
-    # (Lineair) Support Vector Machine
+    # Pipeline Support Vector Machine
     pipeline_SVM = Pipeline(steps=[
     ('classifier', SVC(random_state=42, 
                      max_iter=5000, 
                      class_weight='balanced', 
-                     kernel = 'linear'
+                     kernel = 'linear',
+                     shrinking = True,
+                     probability=True
                      )) 
                      ])
     
     param_grid_SVM = {
     'classifier__kernel': ['linear', 'poly', 'rbf', 'sigmoid'],
     'classifier__C': [0.0001, 0.001, 0.01, 1, 5, 10, 100, 1000],
-    'classifier__gamma':['auto', 'scale', 0.0001, 0.001, 0.01, 1, 10, 100, 1000],
-    'classifier__class_weight': ['none', 'balanced'],
-    'classifier__shrinking':[True, False],
-    'classifier__tol':[1, 0.1, 1e-2, 1e-3, 1e-4]}
+    'classifier__gamma':['auto', 'scale', 0.0001, 0.001, 0.01, 1, 10, 100, 1000]
+    }
 
     grid_search_SVM = GridSearchCV(
     pipeline_SVM,
@@ -178,14 +182,11 @@ def main():
 
     print('Best parameters found:\n', grid_search_SVM.best_params_)
     print("Beste score:", grid_search_SVM.best_score_)
-    print(f"CL Report of PLS-DA:", classification_report(y_validate, y_pred_SVM, zero_division='warn'))
-    plot_auc(y_validate, probabilities_SVM[:,1])
+    print(f"CL Report of SVM:", classification_report(y_validate, y_pred_SVM, zero_division='warn'))
+    plot_auc(y_validate, probabilities_SVM[:,1], "Support vector machine")
+    confussion_matrix(y_validate, y_pred_SVM, "Support vector machine")
 
-
-
-
-
-     #%Gradient Boosting
+    # Pipeline Gradient Boosting
     pipeline_XGB = Pipeline(steps=[
         ('classifier', xgb.XGBClassifier(
         random_state=42,
@@ -214,12 +215,40 @@ def main():
     classifier_XGB = grid_search_XGB.best_estimator_ 
     y_pred_XGB = classifier_XGB.predict(X_validate_filtered)  
     propabilities_XGB = classifier_XGB.predict_proba(X_validate_filtered)[:, 1]
+    if propabilities_XGB.ndim == 1:
+        propabilities_XGB = np.column_stack([1 - propabilities_XGB, propabilities_XGB])
+
 
     print('Best parameters found:\n', grid_search_XGB.best_params_)
     print("Beste score:", grid_search_XGB.best_score_)
-    print(f"CL Report of PLS-DA:", classification_report(y_validate, y_pred_XGB, zero_division='warn'))
-    plot_auc(y_validate, propabilities_XGB[:,1])
+    print(f"CL Report of XGB:", classification_report(y_validate, y_pred_XGB, zero_division='warn'))
+    plot_auc(y_validate, propabilities_XGB[:,1], "XGBoost model")
+    confussion_matrix(y_validate, y_pred_XGB, "XGBoost model")
 
+    # Pipeline Random Forest
+    pipeline_forest = Pipeline(steps=[
+        ('classifier', RandomForestClassifier(class_weight='balanced', random_state=42)) 
+    ])
+    
+    param_dist_forest = {"classifier__n_estimators": [10, 15, 20, 30, 100],
+                "classifier__max_depth":[8,15,25],
+                "classifier__min_samples_leaf":[1,2,5,10,15,100],
+                "classifier__max_leaf_nodes": [2, 5, 10]}
+
+    grid_search_forest = GridSearchCV(pipeline_forest, param_dist_forest, cv=kf, scoring=["accuracy", "roc_auc", "f1"], 
+    refit = "roc_auc", n_jobs=-1)
+    
+    grid_search_forest.fit(X_train_filtered, y_train) 
+    classifier_forest = grid_search_forest.best_estimator_ 
+    y_pred_forest = classifier_forest.predict(X_validate_filtered)  
+    propabilities_forest = classifier_forest.predict_proba(X_validate_filtered)[:, 1]
+    propabilities_forest = np.column_stack([1-propabilities_forest, propabilities_forest])
+
+    print('Best parameters found:\n', grid_search_forest.best_params_)
+    print("Beste score:", grid_search_forest.best_score_)
+    print(f"CL Report of RF:", classification_report(y_validate, y_pred_XGB, zero_division='warn'))
+    plot_auc(y_validate, propabilities_forest[:,1], "Random forest model")
+    confussion_matrix(y_validate, y_pred_forest, "Random forest model")
 
 #%%
 
@@ -315,7 +344,8 @@ def main():
     #%% Classifier Evaluation 
 
 
-#%%
+#%% Run model
+# Run model
 if __name__ == "__main__":
     main()
 # %%
