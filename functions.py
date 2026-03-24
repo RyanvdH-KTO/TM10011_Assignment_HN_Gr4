@@ -102,7 +102,9 @@ def rfe_selection(X_train, X_test, y_train, estimator, n_features=10):
     X_train_sel = selector.fit_transform(X_train, y_train)
     X_test_sel = selector.transform(X_test)
 
-    return X_train_sel, X_test_sel
+    selected_indices = selector.get_support(indices=True)
+
+    return X_train_sel, X_test_sel, selected_indices
 
 # Sequential Feature Selector
 def sfs_selection(X_train, X_test, y_train, estimator, direction="forward", scoring="accuracy", cv=5): # accuracy kan ook met f1 of ROC-AUC, dat nog goed beargumenteren
@@ -119,7 +121,9 @@ def sfs_selection(X_train, X_test, y_train, estimator, direction="forward", scor
     X_train_sel = selector.fit_transform(X_train, y_train)
     X_test_sel = selector.transform(X_test)
 
-    return X_train_sel, X_test_sel
+    selected_indices = selector.get_support(indices=True)
+
+    return X_train_sel, X_test_sel, selected_indices
 
 
 # Plot AUC-curve & confusion matrix

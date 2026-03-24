@@ -74,7 +74,7 @@ def main():
                                         cv=kf, scoring=scoring, refit = True, n_jobs=-1)
     
     # SFS Forward
-    X_train_sfs_fwd, X_validate_sfs_fwd = sfs_selection(
+    X_train_sfs_fwd, X_validate_sfs_fwd, indices_sfs_fwd = sfs_selection(
         X_train_filtered,
         X_validate_filtered,
         y_train,
@@ -85,7 +85,7 @@ def main():
         )
 
     # SFS backward
-    X_train_sfs_bwd, X_validate_sfs_bwd = sfs_selection(
+    X_train_sfs_bwd, X_validate_sfs_bwd, indices_sfs_bwd = sfs_selection(
         X_train_filtered,
         X_validate_filtered,
         y_train,
@@ -96,7 +96,7 @@ def main():
         )
 
     # RFE
-    X_train_rfe, X_validate_rfe = rfe_selection(
+    X_train_rfe, X_validate_rfe, indices_rfe = rfe_selection(
         X_train_filtered,
         X_validate_filtered,
         y_train,
@@ -105,9 +105,9 @@ def main():
         )
     
     selector_data = {
-    "SFS_fwd": (X_train_sfs_fwd, X_validate_sfs_fwd),
-    "SFS_bwd": (X_train_sfs_bwd, X_validate_sfs_bwd),
-    "RFE": (X_train_rfe, X_validate_rfe)
+    "SFS_fwd": (X_train_sfs_fwd, X_validate_sfs_fwd, indices_sfs_fwd),
+    "SFS_bwd": (X_train_sfs_bwd, X_validate_sfs_bwd, indices_sfs_bwd),
+    "RFE": (X_train_rfe, X_validate_rfe, indices_rfe)
     }
 
     best_selector = max(selector_data, key=lambda k: grid_search_regression.fit(selector_data[k][0], y_train).score(selector_data[k][1], y_validate))
@@ -187,7 +187,7 @@ def main():
                                 cv=kf, scoring=scoring, refit = True, n_jobs=-1)
 
     # SFS Forward
-    X_train_sfs_fwd, X_validate_sfs_fwd = sfs_selection(
+    X_train_sfs_fwd, X_validate_sfs_fwd, indices_sfs_fwd = sfs_selection(
         X_train_filtered,
         X_validate_filtered,
         y_train,
@@ -198,7 +198,7 @@ def main():
         )
 
     # SFS backward
-    X_train_sfs_bwd, X_validate_sfs_bwd = sfs_selection(
+    X_train_sfs_bwd, X_validate_sfs_bwd, indices_sfs_bwd = sfs_selection(
         X_train_filtered,
         X_validate_filtered,
         y_train,
@@ -209,7 +209,7 @@ def main():
         )
 
     # RFE
-    X_train_rfe, X_validate_rfe = rfe_selection(
+    X_train_rfe, X_validate_rfe, indices_rfe = rfe_selection(
         X_train_filtered,
         X_validate_filtered,
         y_train,
@@ -218,9 +218,9 @@ def main():
         )
     
     selector_data = {
-    "SFS_fwd": (X_train_sfs_fwd, X_validate_sfs_fwd),
-    "SFS_bwd": (X_train_sfs_bwd, X_validate_sfs_bwd),
-    "RFE": (X_train_rfe, X_validate_rfe)
+    "SFS_fwd": (X_train_sfs_fwd, X_validate_sfs_fwd, indices_sfs_fwd),
+    "SFS_bwd": (X_train_sfs_bwd, X_validate_sfs_bwd, indices_sfs_bwd),
+    "RFE": (X_train_rfe, X_validate_rfe, indices_rfe)
     }
 
     best_selector = max(selector_data, key=lambda k: grid_search_SVM.fit(selector_data[k][0], y_train).score(selector_data[k][1], y_validate))
@@ -318,3 +318,5 @@ if propabilities_XGB.ndim == 1:
 print(f"CL Report of XGB:", classification_report(y_test, y_pred_XGB, zero_division='warn'))
 AUC_plot_and_confusion_matrix(y_test, propabilities_XGB[:,1], y_test, y_pred_XGB, "XGBoost model", test=True)
 
+
+# %%
