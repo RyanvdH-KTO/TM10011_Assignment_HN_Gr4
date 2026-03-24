@@ -40,7 +40,7 @@ def main():
     )
 
     #Scale features
-    X_train_scaled, X_validate_scaled, scaler = scale_features(X_train, X_validate, "minmax")
+    X_train_scaled, X_validate_scaled, scaler = scale_features(X_train, X_validate)
 
     print("Train shape:", X_train_scaled.shape)
     print("Validation shape:", X_validate_scaled.shape)
@@ -285,35 +285,36 @@ print(f'The number of samples: {len(test_data.index)}')
 print(f'The number of columns: {len(test_data.columns)}')
 print(test_data['label'].value_counts())
 
-x_test, y_test = split_features_target(test_data)
+X_test, y_test = split_features_target(test_data)
 # %%
 
 # LR test
-y_pred_regression = classifier_LR.predict(X_validate_best)
-probabilities_regression = classifier_LR.predict_proba(X_validate_best)[:, 1]
+y_pred_regression = classifier_LR.predict(X_test)
+probabilities_regression = classifier_LR.predict_proba(X_test)[:, 1]
 
-print(f"CL Report of LR:", classification_report(y_validate, y_pred_regression, zero_division='warn'))
-AUC_plot_and_confusion_matrix(y_validate, probabilities_regression, y_validate, y_pred_regression, "Logistic regression model")
+print(f"CL Report of LR:", classification_report(y_test, y_pred_regression, zero_division='warn'))
+AUC_plot_and_confusion_matrix(y_test, probabilities_regression, y_test, y_pred_regression, "Logistic regression model", test=True)
 
 # PLS-DA test
-y_pred_pls_da = classifier_PLS_DA.predict(X_validate_filtered)
-probabilities_pls_da = classifier_PLS_DA.predict_proba(X_validate_filtered)
+y_pred_pls_da = classifier_PLS_DA.predict(X_test)
+probabilities_pls_da = classifier_PLS_DA.predict_proba(X_test)
 
-print(f"CL Report of PLS-DA:", classification_report(y_validate, y_pred_pls_da, zero_division='warn'))
-AUC_plot_and_confusion_matrix(y_validate, probabilities_pls_da[:,1], y_validate, y_pred_pls_da, "PLS DA model")
+print(f"CL Report of PLS-DA:", classification_report(y_test, y_pred_pls_da, zero_division='warn'))
+AUC_plot_and_confusion_matrix(y_test, probabilities_pls_da[:,1], y_test, y_pred_pls_da, "PLS DA model", test=True)
 
 # SVM test
-y_pred_SVM = classifier_SVM.predict(X_validate_filtered) 
-probabilities_SVM = classifier_SVM.predict_proba(X_validate_filtered)
+y_pred_SVM = classifier_SVM.predict(X_test) 
+probabilities_SVM = classifier_SVM.predict_proba(X_test)
 
-print(f"CL Report of SVM:", classification_report(y_validate, y_pred_SVM, zero_division='warn'))
-AUC_plot_and_confusion_matrix(y_validate, probabilities_SVM[:,1], y_validate, y_pred_SVM, "Support vector machine")
+print(f"CL Report of SVM:", classification_report(y_test, y_pred_SVM, zero_division='warn'))
+AUC_plot_and_confusion_matrix(y_test, probabilities_SVM[:,1], y_test, y_pred_SVM, "Support vector machine", test=True)
     
 # XGB test
-y_pred_XGB = classifier_XGB.predict(X_validate_filtered)  
-propabilities_XGB = classifier_XGB.predict_proba(X_validate_filtered)[:, 1]
+y_pred_XGB = classifier_XGB.predict(X_test)  
+propabilities_XGB = classifier_XGB.predict_proba(X_test)[:, 1]
 if propabilities_XGB.ndim == 1:
     propabilities_XGB = np.column_stack([1 - propabilities_XGB, propabilities_XGB])
 
-print(f"CL Report of XGB:", classification_report(y_validate, y_pred_XGB, zero_division='warn'))
-AUC_plot_and_confusion_matrix(y_validate, propabilities_XGB[:,1], y_validate, y_pred_XGB, "XGBoost model")
+print(f"CL Report of XGB:", classification_report(y_test, y_pred_XGB, zero_division='warn'))
+AUC_plot_and_confusion_matrix(y_test, propabilities_XGB[:,1], y_test, y_pred_XGB, "XGBoost model", test=True)
+
