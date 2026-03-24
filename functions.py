@@ -92,7 +92,7 @@ def plot_correlation_matrix(X_train, to_drop, feature_names=None):
     plt.savefig("correlation_matrix.png", dpi=150, bbox_inches="tight")
     plt.show()
 
-#%% Feature selectors
+# Feature selectors
 
 # RFE: recursive feature elimination
 def rfe_selection(X_train, X_test, y_train, estimator, n_features=10):
@@ -122,9 +122,9 @@ def sfs_selection(X_train, X_test, y_train, estimator, direction="forward", scor
     return X_train_sel, X_test_sel
 
 
-#%% Plot AUC-curve & confusion matrix
+# Plot AUC-curve & confusion matrix
 
-def plot(labels, probs, y_test, y_pred, model):
+def AUC_plot_and_confusion_matrix(labels, probs, y_test, y_pred, model):
     # info
     fpr = dict()
     tpr = dict()
@@ -132,7 +132,7 @@ def plot(labels, probs, y_test, y_pred, model):
     fpr, tpr, _ = roc_curve(labels.values.ravel(), probs.ravel())
     roc_auc = auc(fpr, tpr)
     
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
+    fig,(ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
 
     ax1.plot(fpr, tpr, color='blue', linewidth=2.5, label=f'AUC: {roc_auc:.3f}', linestyle='solid')
     ax1.plot([0, 1], [0, 1], color='grey', linestyle=(0, (5, 10)), label='Random prediction')
@@ -155,4 +155,6 @@ def plot(labels, probs, y_test, y_pred, model):
     
     plt.tight_layout()
     plt.show()
+
+    return roc_auc
 # %%

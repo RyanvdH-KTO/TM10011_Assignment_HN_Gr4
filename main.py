@@ -10,8 +10,8 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import FunctionTransformer
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.model_selection import train_test_split, StratifiedKFold, GridSearchCV
-from functions import check_missing_values, split_features_target, scale_features, rfe_selection, sfs_selection, remove_correlated_features, plot
-
+from functions import check_missing_values, split_features_target, scale_features, rfe_selection, sfs_selection, remove_correlated_features
+from functions import AUC_plot_and_confusion_matrix
 #%% Load Data
 # Load Training Data
 data = pd.read_csv('hn/Trainings_data.csv', index_col=0)
@@ -123,7 +123,7 @@ def main():
     print('Best parameters found:\n', grid_search_regression.best_params_)
     print("Beste score:", grid_search_regression.best_score_)
     print(f"CL Report of LR:", classification_report(y_validate, y_pred_regression, zero_division='warn'))
-    plot(y_validate, probabilities_regression, y_validate, y_pred_regression, "Logistic regression model")
+    AUC_plot_and_confusion_matrix(y_validate, probabilities_regression, y_validate, y_pred_regression, "Logistic regression model")
 
     #--------------------------------------------------------------
     # Pipeline PLS-DA
@@ -161,7 +161,7 @@ def main():
     print('Best parameters found:\n', grid_search_pls_da.best_params_)
     print("Beste score:", grid_search_pls_da.best_score_)
     print(f"CL Report of PLS-DA:", classification_report(y_validate, y_pred_pls_da, zero_division='warn'))
-    plot(y_validate, probabilities_pls_da[:,1], y_validate, y_pred_pls_da, "PLS DA model")
+    AUC_plot_and_confusion_matrix(y_validate, probabilities_pls_da[:,1], y_validate, y_pred_pls_da, "PLS DA model")
 
     #--------------------------------------------------------------
     # Pipeline Support Vector Machine
@@ -233,7 +233,7 @@ def main():
     print('Best parameters found:\n', grid_search_SVM.best_params_)
     print("Beste score:", grid_search_SVM.best_score_)
     print(f"CL Report of SVM:", classification_report(y_validate, y_pred_SVM, zero_division='warn'))
-    plot(y_validate, probabilities_SVM[:,1], y_validate, y_pred_SVM, "Support vector machine")
+    AUC_plot_and_confusion_matrix(y_validate, probabilities_SVM[:,1], y_validate, y_pred_SVM, "Support vector machine")
     
     #--------------------------------------------------------------
     # Pipeline Gradient Boosting
@@ -266,7 +266,7 @@ def main():
     print('Best parameters found:\n', grid_search_XGB.best_params_)
     print("Beste score:", grid_search_XGB.best_score_)
     print(f"CL Report of XGB:", classification_report(y_validate, y_pred_XGB, zero_division='warn'))
-    plot(y_validate, propabilities_XGB[:,1], y_validate, y_pred_XGB, "XGBoost model")
+    AUC_plot_and_confusion_matrix(y_validate, propabilities_XGB[:,1], y_validate, y_pred_XGB, "XGBoost model")
 
     return classifier_LR, classifier_PLS_DA, classifier_SVM, classifier_XGB
 
