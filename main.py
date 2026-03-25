@@ -101,7 +101,7 @@ def main():
         X_validate_filtered,
         y_train,
         estimator=LogisticRegression(max_iter=1000, random_state=42),
-        n_features=10
+        n_features=15
         )
     
     selector_data_LR = {
@@ -214,7 +214,7 @@ def main():
         X_validate_filtered,
         y_train,
         estimator=SVC(kernel="linear", max_iter=1000, random_state=42),
-        n_features=10
+        n_features=15
         )
     
     selector_data_SVM = {
