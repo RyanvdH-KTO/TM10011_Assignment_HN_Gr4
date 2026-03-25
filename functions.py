@@ -25,8 +25,8 @@ def check_missing_values(data):
 
 # Split data into features (X) and target (y)
 def split_features_target(data, label_col='label'):
-    X = data.drop(columns=[label_col]) 
-    y = data[label_col]
+    X = data.drop(columns=[label_col][:,1]) 
+    y = data[label_col[:,1]]
     #Encode labels: T12 = 0, T34 = 1
     y = y.map({'T12': 0, 'T34': 1})
     return X, y
