@@ -304,21 +304,21 @@ print("Label distribution training set:\n", y_test.value_counts())
 y_pred_regression = classifier_LR.predict(X_test_selected_LR)
 probabilities_regression = classifier_LR.predict_proba(X_test_selected_LR)[:, 1]
 print(y_pred_regression.shape)
-print(f"CL Report of LR:", classification_report(y_test, y_pred_regression, zero_division='warn'))
+print(f"CL Report of LR:\n", classification_report(y_test, y_pred_regression, zero_division='warn'))
 AUC_plot_and_confusion_matrix(y_test, probabilities_regression, y_test, y_pred_regression, "Logistic regression model", test=True)
 
 # PLS-DA test
 y_pred_pls_da = classifier_PLS_DA.predict(X_test_filtered)
 probabilities_pls_da = classifier_PLS_DA.predict_proba(X_test_filtered)
 
-print(f"CL Report of PLS-DA:", classification_report(y_test, y_pred_pls_da, zero_division='warn'))
+print(f"CL Report of PLS-DA:\n", classification_report(y_test, y_pred_pls_da, zero_division='warn'))
 AUC_plot_and_confusion_matrix(y_test, probabilities_pls_da[:,1], y_test, y_pred_pls_da, "PLS DA model", test=True)
 
 # SVM test
 y_pred_SVM = classifier_SVM.predict(X_test_selected_SVM) 
 probabilities_SVM = classifier_SVM.predict_proba(X_test_selected_SVM)
 
-print(f"CL Report of SVM:", classification_report(y_test, y_pred_SVM, zero_division='warn'))
+print(f"CL Report of SVM:\n", classification_report(y_test, y_pred_SVM, zero_division='warn'))
 AUC_plot_and_confusion_matrix(y_test, probabilities_SVM[:,1], y_test, y_pred_SVM, "Support vector machine", test=True)
     
 # XGB test
@@ -327,7 +327,7 @@ propabilities_XGB = classifier_XGB.predict_proba(X_test_filtered)[:, 1]
 if propabilities_XGB.ndim == 1:
     propabilities_XGB = np.column_stack([1 - propabilities_XGB, propabilities_XGB])
 
-print(f"CL Report of XGB:", classification_report(y_test, y_pred_XGB, zero_division='warn'))
+print(f"CL Report of XGB:\n", classification_report(y_test, y_pred_XGB, zero_division='warn'))
 AUC_plot_and_confusion_matrix(y_test, propabilities_XGB[:,1], y_test, y_pred_XGB, "XGBoost model", test=True)
 
 
