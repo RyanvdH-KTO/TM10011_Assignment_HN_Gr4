@@ -72,7 +72,7 @@ def correlation_filter(X, threshold=0.95, fit_cols=[None]):
             correlated = upper.index[upper[col] > threshold].tolist()
             to_drop.update(correlated)
         
-        keep_cols = [c for c in df.columns if c not in to_drop]
+        keep_cols = [X.columns.get_loc(c) for c in df.columns if c not in to_drop]
         if len(keep_cols) == 0:
             raise ValueError("All features removed! Increase threshold.")
         
@@ -80,7 +80,7 @@ def correlation_filter(X, threshold=0.95, fit_cols=[None]):
     else:
         keep_cols = fit_cols[0]
 
-    return df.iloc[:, keep_cols].values
+    return df.iloc[:, np.findindex(df.columns, keep_cols)].values
 
 def plot_correlation_matrix(X_train, to_drop, feature_names=None):
     df = pd.DataFrame(X_train, columns=feature_names)

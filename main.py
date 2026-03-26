@@ -5,7 +5,6 @@ import pandas as pd
 import xgboost as xgb
 from sklearn.svm import SVC
 from sklearn.pipeline import Pipeline
-
 from sklearn.metrics import classification_report
 from sklearn.linear_model import LogisticRegression
 from sklearn.cross_decomposition import PLSRegression
@@ -54,7 +53,7 @@ def main():
     # Pipeline Logistic regression
     pipeline_regression = Pipeline(steps=[
         ('scaler', MinMaxScaler()),
-        ('covariance_filter', correlation_filter(threshold=0.95)),
+        ('covariance_filter', correlation_filter(X_train, threshold=0.95)),
         ('classifier', LogisticRegression(
                         penalty='l1',
                         solver='saga',
