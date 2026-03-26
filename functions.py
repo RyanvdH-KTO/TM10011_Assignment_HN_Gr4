@@ -53,34 +53,25 @@ def scale_features(X_train, X_test, method="standard"):
     return X_train_scaled, X_test_scaled, scaler
 
 
-def correlation_filter(X, threshold=0.95, fit_cols=[None]):
-    """
-    Remove highly correlated features (> threshold) from X.
-    Keeps one feature per correlated group.
-    
-    fit_cols: list of one element to remember which columns to keep
-    """
-    df = pd.DataFrame(X)
-    
-    if fit_cols[0] is None:
-        # Compute correlation matrix
+def make_correlation_filter(threshold=0.95):
+    fit_cols = []
+
+    def _fit_transform(X, y=None):
+        nonlocal fit_cols
+        df = pd.DataFrame(X)
         corr_matrix = df.corr().abs()
         upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
+        # Find columns to drop
+        to_drop = [col for col in upper.columns if any(upper[col] > threshold)]
+        # Keep the remaining
+        fit_cols = [col for col in df.columns if col not in to_drop]
+        return df[fit_cols].values
 
-        to_drop = set()
-        for col in upper.columns:
-            correlated = upper.index[upper[col] > threshold].tolist()
-            to_drop.update(correlated)
-        
-        keep_cols = [X.columns.get_loc(c) for c in df.columns if c not in to_drop]
-        if len(keep_cols) == 0:
-            raise ValueError("All features removed! Increase threshold.")
-        
-        fit_cols[0] = keep_cols
-    else:
-        keep_cols = fit_cols[0]
+    def _transform(X):
+        df = pd.DataFrame(X)
+        return df[fit_cols].values
 
-    return df.iloc[:, keep_cols].values
+    return FunctionTransformer(func=_transform, validate=False, accept_sparse=False, kw_args=None)
 
 def plot_correlation_matrix(X_train, to_drop, feature_names=None):
     df = pd.DataFrame(X_train, columns=feature_names)
