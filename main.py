@@ -58,7 +58,7 @@ def main():
                         solver='saga',
                         class_weight='balanced',
                         random_state=42,
-                        max_iter=1000
+                        max_iter=10000
                         ))
                         ])
 
@@ -83,7 +83,7 @@ def main():
         X_train,
         X_validate,
         y_train,
-        estimator=LogisticRegression(max_iter=1000, random_state=42),
+        estimator=LogisticRegression(max_iter=10000, random_state=42),
         direction="forward",
         scoring=scoring,
         cv=kf
@@ -95,7 +95,7 @@ def main():
         X_train,
         X_validate,
         y_train,
-        estimator=LogisticRegression(max_iter=1000, random_state=42),
+        estimator=LogisticRegression(max_iter=10000, random_state=42),
         direction="backward",
         scoring = scoring,
         cv=kf
@@ -107,7 +107,7 @@ def main():
         X_train,
         X_validate,
         y_train,
-        estimator=LogisticRegression(max_iter=1000, random_state=42),
+        estimator=LogisticRegression(max_iter=10000, random_state=42),
         n_features=15
         )
     
@@ -155,7 +155,7 @@ def main():
                         class_weight='balanced',
                         l1_ratio=0.85,
                         random_state=42,
-                        max_iter=1000
+                        max_iter=10000
                         ))
                         ])
 
@@ -192,7 +192,7 @@ def main():
         ('covariance_filter', DropCorrelatedFeatures(threshold=0.95)),
         ('classifier', SVC(
                         random_state=42, 
-                        max_iter=1000, 
+                        max_iter=10000, 
                         class_weight='balanced', 
                         kernel = 'linear',
                         shrinking = True,
@@ -217,7 +217,7 @@ def main():
         X_train,
         X_validate,
         y_train,
-        estimator=SVC(max_iter=1000, random_state=42),
+        estimator=SVC(max_iter=10000, random_state=42),
         direction="forward",
         scoring=scoring,
         cv=kf
@@ -229,7 +229,7 @@ def main():
         X_train,
         X_validate,
         y_train,
-        estimator=SVC(max_iter=1000, random_state=42),
+        estimator=SVC(max_iter=10000, random_state=42),
         direction="backward",
         scoring = scoring,
         cv=kf
@@ -241,7 +241,7 @@ def main():
         X_train,
         X_validate,
         y_train,
-        estimator=SVC(kernel="linear", max_iter=1000, random_state=42),
+        estimator=SVC(kernel="linear", max_iter=10000, random_state=42),
         n_features=15
         )
     
@@ -298,7 +298,7 @@ def main():
     grid_search_XGB = GridSearchCV(pipeline_XGB, param_grid_XGB, 
                                 cv=kf, scoring=scoring, refit = True, n_jobs=-1)
 
-    print('\r  working on XGB XGB...      ', end='', flush=True)
+    print('\r  working on XGB fitting...      ', end='', flush=True)
     grid_search_XGB.fit(X_train, y_train)
 
     classifier_XGB = grid_search_XGB.best_estimator_ 
