@@ -11,7 +11,7 @@ from sklearn.cross_decomposition import PLSRegression
 from sklearn.preprocessing import FunctionTransformer, MinMaxScaler
 from sklearn.model_selection import train_test_split, StratifiedKFold, GridSearchCV
 from functions import check_missing_values, remove_highly_correlated_features, split_features_target, scale_features, rfe_selection, sfs_selection
-from functions import AUC_plot_and_confusion_matrix, make_correlation_filter
+from functions import AUC_plot_and_confusion_matrix
 #%% Load Data
 # Load Training Data
 data = pd.read_csv('hn/Trainings_data.csv', index_col=0)
@@ -73,11 +73,11 @@ def main():
     print(X_validate.shape)
     grid_search_regression = GridSearchCV(pipeline_regression, param_grid_regression,
                                         cv=kf, scoring=scoring, refit = True, n_jobs=-1)
-    '''
+
     # SFS Forward
     X_train_sfs_fwd_LR, X_validate_sfs_fwd_LR, indices_sfs_fwd_LR = sfs_selection(
-        X_train_filtered,
-        X_validate_filtered,
+        X_train,
+        X_validate,
         y_train,
         estimator=LogisticRegression(max_iter=1000, random_state=42),
         direction="forward",
@@ -87,8 +87,8 @@ def main():
 
     # SFS backward
     X_train_sfs_bwd_LR, X_validate_sfs_bwd_LR, indices_sfs_bwd_LR = sfs_selection(
-        X_train_filtered,
-        X_validate_filtered,
+        X_train,
+        X_validate,
         y_train,
         estimator=LogisticRegression(max_iter=1000, random_state=42),
         direction="backward",
@@ -98,8 +98,8 @@ def main():
 
     # RFE
     X_train_rfe_LR, X_validate_rfe_LR, indices_rfe_LR = rfe_selection(
-        X_train_filtered,
-        X_validate_filtered,
+        X_train,
+        X_validate,
         y_train,
         estimator=LogisticRegression(max_iter=1000, random_state=42),
         n_features=15
@@ -111,16 +111,15 @@ def main():
     "RFE": (X_train_rfe_LR, X_validate_rfe_LR, indices_rfe_LR)
     }
 
-    best_selector_LR = max(selector_data_LR, key=lambda k: grid_search_regression.fit(selector_data_LR[k][0], y_train).score(selector_data_LR[k][1], y_validate))
+    best_selector_LR = max(selector_data_LR, key=lambda k: grid_search_regression.fit(selector_data_LR[k][0], y_train).score(selector_data_LR[k][1], y_train))
     print(f"Best Selector: {best_selector_LR}")
 
     X_train_best_LR, X_validate_best_LR, LR_selector = selector_data_LR[best_selector_LR]
-    '''
-    grid_search_regression.fit(X_train, y_train)
+
+    grid_search_regression.fit(X_train_best_LR, y_train)
     classifier_LR = grid_search_regression.best_estimator_
-    print(X_validate.shape)
-    y_pred_regression = classifier_LR.predict(X_validate)
-    probabilities_regression = classifier_LR.predict_proba(X_validate)[:, 1]
+    y_pred_regression = classifier_LR.predict(X_validate_best_LR)
+    probabilities_regression = classifier_LR.predict_proba(X_validate_best_LR)[:, 1]
 
     print('Best parameters found:\n', grid_search_regression.best_params_)
     print("Beste score:", grid_search_regression.best_score_)
@@ -137,7 +136,7 @@ def main():
     pipeline_pls_da = Pipeline([
         ('scaler', MinMaxScaler()),
         ('covariance_filter', FunctionTransformer(func=remove_highly_correlated_features, kw_args={'threshold': 0.95})),
-        ('pls', PLSRegression(n_components=1, scale=False, max_iter=10)),
+        ('pls', PLSRegression(n_components=10, scale=False, max_iter=10)),
         ('squeeze', FunctionTransformer(squeeze_output)),
         ('classifier', LogisticRegression(
                         penalty='elasticnet',
@@ -229,7 +228,7 @@ def main():
     "RFE": (X_train_rfe_SVM, X_validate_rfe_SVM, indices_rfe_SVM)
     }
 
-    best_selector_SVM = max(selector_data_SVM, key=lambda k: grid_search_SVM.fit(selector_data_SVM[k][0], y_train).score(selector_data_SVM[k][1], y_validate))
+    best_selector_SVM = max(selector_data_SVM, key=lambda k: grid_search_SVM.fit(selector_data_SVM[k][0], y_train).score(selector_data_SVM[k][1], y_train))
     print(f"Best Selector: {best_selector_SVM}")
 
     X_train_best_SVM, X_validate_best_SVM, SVM_selector = selector_data_SVM[best_selector_SVM]
@@ -271,14 +270,14 @@ def main():
 
     classifier_XGB = grid_search_XGB.best_estimator_ 
     y_pred_XGB = classifier_XGB.predict(X_validate)  
-    propabilities_XGB = classifier_XGB.predict_proba(X_validate)[:, 1]
-    if propabilities_XGB.ndim == 1:
-        propabilities_XGB = np.column_stack([1 - propabilities_XGB, propabilities_XGB])
+    probabilities_XGB = classifier_XGB.predict_proba(X_validate)[:, 1]
+    if probabilities_XGB.ndim == 1:
+        probabilities_XGB = np.column_stack([1 - probabilities_XGB, probabilities_XGB])
 
     print('Best parameters found:\n', grid_search_XGB.best_params_)
     print("Beste score:", grid_search_XGB.best_score_)
     print(f"CL Report of XGB:\n", classification_report(y_validate, y_pred_XGB, zero_division='warn'))
-    AUC_plot_and_confusion_matrix(y_validate, propabilities_XGB[:,1], y_validate, y_pred_XGB, "XGBoost model")
+    AUC_plot_and_confusion_matrix(y_validate, probabilities_XGB[:,1], y_validate, y_pred_XGB, "XGBoost model")
 
     return X_train, classifier_LR, classifier_PLS_DA, classifier_SVM, classifier_XGB, LR_selector, SVM_selector
 
@@ -297,7 +296,7 @@ print(test_data['label'].value_counts())
 check_missing_values(test_data)
 X_test, y_test = split_features_target(test_data)
 X_train_scaled, X_test_scaled, scaler = scale_features(X_train, X_test)
-X_train_filtered, X_test_filtered, to_drop, surviving_cols = remove_correlated_features(X_train_scaled, X_test_scaled)
+X_train_filtered, X_test_filtered, to_drop, surviving_cols = remove_highly_correlated_features(X_train_scaled, X_test_scaled)
 X_test_selected_LR = X_test_filtered[:, LR_selector]
 X_test_selected_SVM = X_test_filtered[:, SVM_selector]
 
