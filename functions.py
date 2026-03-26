@@ -52,26 +52,14 @@ def scale_features(X_train, X_test, method="standard"):
 
     return X_train_scaled, X_test_scaled, scaler
 
-
-def make_correlation_filter(threshold=0.95):
-    fit_cols = []
-
-    def _fit_transform(X, y=None):
-        nonlocal fit_cols
-        df = pd.DataFrame(X)
-        corr_matrix = df.corr().abs()
-        upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
-        # Find columns to drop
-        to_drop = [col for col in upper.columns if any(upper[col] > threshold)]
-        # Keep the remaining
-        fit_cols = [col for col in df.columns if col not in to_drop]
-        return df[fit_cols].values
-
-    def _transform(X):
-        df = pd.DataFrame(X)
-        return df[fit_cols].values
-
-    return FunctionTransformer(func=_transform, validate=False, accept_sparse=False, kw_args=None)
+def remove_highly_correlated_features(X, threshold=0.95):
+    """Remove features with correlation higher than the threshold."""
+    df = pd.DataFrame(X)
+    corr_matrix = df.corr().abs()
+    upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
+    to_drop = [col for col in upper.columns if any(upper[col] > threshold)]
+    
+    return df.drop(columns=to_drop).values
 
 def plot_correlation_matrix(X_train, to_drop, feature_names=None):
     df = pd.DataFrame(X_train, columns=feature_names)

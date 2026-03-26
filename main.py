@@ -10,7 +10,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.preprocessing import FunctionTransformer, MinMaxScaler
 from sklearn.model_selection import train_test_split, StratifiedKFold, GridSearchCV
-from functions import check_missing_values, split_features_target, scale_features, rfe_selection, sfs_selection, make_correlation_filter
+from functions import check_missing_values, remove_highly_correlated_features, split_features_target, scale_features, rfe_selection, sfs_selection
 from functions import AUC_plot_and_confusion_matrix
 #%% Load Data
 # Load Training Data
@@ -53,7 +53,7 @@ def main():
     # Pipeline Logistic regression
     pipeline_regression = Pipeline(steps=[
         ('scaler', MinMaxScaler()),
-        ('covariance_filter', make_correlation_filter(X_train, threshold=0.95)),
+        ('covariance_filter', remove_highly_correlated_features(X_train, threshold=0.95)),
         ('classifier', LogisticRegression(
                         penalty='l1',
                         solver='saga',
