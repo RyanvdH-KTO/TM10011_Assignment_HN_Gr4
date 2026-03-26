@@ -10,7 +10,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.preprocessing import FunctionTransformer, MinMaxScaler
 from sklearn.model_selection import train_test_split, StratifiedKFold, GridSearchCV
-from functions import check_missing_values, split_features_target, scale_features, rfe_selection, sfs_selection, remove_highly_correlated_features
+from functions import check_missing_values, split_features_target, scale_features, rfe_selection, sfs_selection, make_correlation_filter
 from functions import AUC_plot_and_confusion_matrix
 #%% Load Data
 # Load Training Data
@@ -31,7 +31,7 @@ def main():
     X, y = split_features_target(data)
 
     #Split into train and validateset
-    X_train_filtered, X_validate_filtered, y_train, y_validate = train_test_split(
+    X_train, X_validate, y_train, y_validate = train_test_split(
         X,
         y,
         test_size=0.2,
@@ -39,8 +39,8 @@ def main():
         random_state=42
     )
 
-    print("Train shape:", X_train_filtered.shape)
-    print("Validation shape:", X_validate_filtered.shape)
+    print("Train shape:", X_train.shape)
+    print("Validation shape:", X_validate.shape)
     print("Label distribution training set:\n", y_train.value_counts())
 
     #Covariance feature elimination
@@ -53,7 +53,7 @@ def main():
     # Pipeline Logistic regression
     pipeline_regression = Pipeline(steps=[
         ('scaler', MinMaxScaler()),
-        ('covariance_filter', FunctionTransformer(remove_highly_correlated_features)),
+        ('covariance_filter', make_correlation_filter(threshold=0.95)),
         ('classifier', LogisticRegression(
                         penalty='l1',
                         solver='saga',
@@ -68,10 +68,10 @@ def main():
         'classifier__penalty': ['l1', 'l2', 'elasticnet'],
         'classifier__solver': ['liblinear', 'saga']
     }
-
+    print(X_validate.shape)
     grid_search_regression = GridSearchCV(pipeline_regression, param_grid_regression,
                                         cv=kf, scoring=scoring, refit = True, n_jobs=-1)
-    
+    '''
     # SFS Forward
     X_train_sfs_fwd_LR, X_validate_sfs_fwd_LR, indices_sfs_fwd_LR = sfs_selection(
         X_train_filtered,
@@ -113,11 +113,12 @@ def main():
     print(f"Best Selector: {best_selector_LR}")
 
     X_train_best_LR, X_validate_best_LR, LR_selector = selector_data_LR[best_selector_LR]
-    grid_search_regression.fit(X_train_best_LR, y_train)
-
+    '''
+    grid_search_regression.fit(X_train, y_train)
     classifier_LR = grid_search_regression.best_estimator_
-    y_pred_regression = classifier_LR.predict(X_validate_best_LR)
-    probabilities_regression = classifier_LR.predict_proba(X_validate_best_LR)[:, 1]
+    print(X_validate.shape)
+    y_pred_regression = classifier_LR.predict(X_validate)
+    probabilities_regression = classifier_LR.predict_proba(X_validate)[:, 1]
 
     print('Best parameters found:\n', grid_search_regression.best_params_)
     print("Beste score:", grid_search_regression.best_score_)

@@ -4,6 +4,7 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.feature_selection import RFE
+from sklearn.pipeline import FunctionTransformer
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import roc_curve, auc, confusion_matrix 
 from sklearn.feature_selection import SequentialFeatureSelector
@@ -51,14 +52,23 @@ def scale_features(X_train, X_test, method="standard"):
 
     return X_train_scaled, X_test_scaled, scaler
 
-def remove_highly_correlated_features(X, threshold=0.95):
-    """Remove features with correlation higher than the threshold."""
-    df = pd.DataFrame(X)
-    corr_matrix = df.corr().abs()
-    upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
-    to_drop = [col for col in upper.columns if any(upper[col] > threshold)]
-    
-    return df.drop(columns=to_drop).values
+
+def make_correlation_filter(threshold=0.95):
+    cols_to_keep = []
+
+    def fit(X, y=None):
+        nonlocal cols_to_keep
+        df = pd.DataFrame(X)
+        corr_matrix = df.corr().abs()
+        upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
+        cols_to_keep = [col for col in df.columns if all(upper[col] <= threshold)]
+        return X  # fit must return X
+
+    def transform(X):
+        df = pd.DataFrame(X)
+        return df.iloc[:, cols_to_keep].values
+
+    return FunctionTransformer(func=transform, validate=False, accept_sparse=False)
 
 def plot_correlation_matrix(X_train, to_drop, feature_names=None):
     df = pd.DataFrame(X_train, columns=feature_names)
@@ -103,7 +113,7 @@ def sfs_selection(X_train, X_test, y_train, estimator, direction="forward", scor
         n_features_to_select="auto",
         direction=direction,
         scoring=scoring,
-        tol=1e-3
+        tol=1e-3,
         cv=cv,
         n_jobs=-1
     )
