@@ -50,13 +50,22 @@ def scale_features(X_train, X_test, method="standard"):
     X_test_scaled = scaler.transform(X_test)
 
     return X_train_scaled, X_test_scaled, scaler
-def remove_highly_correlated_features(X, threshold=0.95):
-    """Remove features with correlation higher than the threshold."""
-    df = pd.DataFrame(X)
-    corr_matrix = df.corr().abs()
+
+def remove_highly_correlated_features(X_train, X_validate, threshold=0.95):
+    """Remove features with correlation higher than the threshold from both X_train and X_validate."""
+    df_train = pd.DataFrame(X_train)
+    df_validate = pd.DataFrame(X_validate)
+
+    # Compute correlation matrix
+    corr_matrix = df_train.corr().abs()
     upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
     to_drop = [col for col in upper.columns if any(upper[col] > threshold)]
-    return df.drop(columns=to_drop).values
+
+    # Ensure both datasets have the same columns after dropping correlated features
+    X_train_filtered = df_train.drop(columns=to_drop).values
+    X_validate_filtered = df_validate.drop(columns=to_drop).values
+
+    return X_train_filtered, X_validate_filtered, to_drop
 
 def plot_correlation_matrix(X_train, to_drop, feature_names=None):
     df = pd.DataFrame(X_train, columns=feature_names)
