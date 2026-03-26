@@ -53,7 +53,7 @@ def main():
     # Pipeline Logistic regression
     pipeline_regression = Pipeline(steps=[
         ('scaler', MinMaxScaler()),
-        ('covariance_filter', make_correlation_filter(threshold=0.95)),
+        ('covariance_filter', FunctionTransformer(func=remove_highly_correlated_features, kw_args={'threshold': 0.95})),
         ('classifier', LogisticRegression(
                         penalty='l1',
                         solver='saga',
