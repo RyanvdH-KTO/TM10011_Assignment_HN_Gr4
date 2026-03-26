@@ -12,6 +12,10 @@ from sklearn.cross_decomposition import PLSRegression
 from sklearn.model_selection import train_test_split, StratifiedKFold, GridSearchCV
 from functions import check_missing_values, split_features_target, scale_features, rfe_selection, sfs_selection, remove_correlated_features
 from functions import AUC_plot_and_confusion_matrix
+
+from feature_engine.selection import DropCorrelatedFeatures
+from sklearn.preprocessing import StandardScaler
+
 #%% Load Data
 # Load Training Data
 data = pd.read_csv('hn/Trainings_data.csv', index_col=0)
@@ -48,22 +52,28 @@ def main():
 
     #Covariance feature elimination
     X_train_filtered, X_validate_filtered, to_drop, surviving_cols = remove_correlated_features(X_train_scaled, X_validate_scaled)
+    
 
+    
     # Define k-fold
     kf = StratifiedKFold(n_splits=10, shuffle=True, random_state=42)
 
     #--------------------------------------------------------------
     # Pipeline Logistic regression
+    print('Start VSM pipeline', flush=True)
     pipeline_regression = Pipeline(steps=[
+        ('scaler', StandardScaler()),
+        ('corr', DropCorrelatedFeatures(threshold=0.95)),
         ('classifier', LogisticRegression(
                         penalty='l1',
                         solver='saga',
                         class_weight='balanced',
                         random_state=42,
                         max_iter=1000
-                        ))
-                        ])
+                        ))], verbose = True)
+     
 
+    print('\n start VSM grid search', flush=True)
     param_grid_regression = {
         'classifier__C': [0.001, 0.01, 0.1, 1, 10],
         'classifier__penalty': ['l1', 'l2', 'elasticnet'],
@@ -71,12 +81,13 @@ def main():
     }
 
     grid_search_regression = GridSearchCV(pipeline_regression, param_grid_regression,
-                                        cv=kf, scoring=scoring, refit = True, n_jobs=-1)
+                                        cv=kf, scoring=scoring, refit = True, n_jobs=-1, verbose = 3)
     
+    print('VSM - SFS forward', flush=True)
     # SFS Forward
     X_train_sfs_fwd_LR, X_validate_sfs_fwd_LR, indices_sfs_fwd_LR = sfs_selection(
-        X_train_filtered,
-        X_validate_filtered,
+        X_train,
+        X_validate,
         y_train,
         estimator=LogisticRegression(max_iter=1000, random_state=42),
         direction="forward",
@@ -84,10 +95,11 @@ def main():
         cv=kf
         )
 
+    print('VSM - SFS backward', flush=True)
     # SFS backward
     X_train_sfs_bwd_LR, X_validate_sfs_bwd_LR, indices_sfs_bwd_LR = sfs_selection(
-        X_train_filtered,
-        X_validate_filtered,
+        X_train,
+        X_validate,
         y_train,
         estimator=LogisticRegression(max_iter=1000, random_state=42),
         direction="backward",
@@ -95,15 +107,17 @@ def main():
         cv=kf
         )
 
+    print('VSM - RFE', flush=True)
     # RFE
     X_train_rfe_LR, X_validate_rfe_LR, indices_rfe_LR = rfe_selection(
-        X_train_filtered,
-        X_validate_filtered,
+        X_train,
+        X_validate,
         y_train,
         estimator=LogisticRegression(max_iter=1000, random_state=42),
         n_features=15
         )
     
+    print('VSM - selector data', flush=True)
     selector_data_LR = {
     "SFS_fwd": (X_train_sfs_fwd_LR, X_validate_sfs_fwd_LR, indices_sfs_fwd_LR),
     "SFS_bwd": (X_train_sfs_bwd_LR, X_validate_sfs_bwd_LR, indices_sfs_bwd_LR),
@@ -114,12 +128,16 @@ def main():
     print(f"Best Selector: {best_selector_LR}")
 
     X_train_best_LR, X_validate_best_LR, LR_selector = selector_data_LR[best_selector_LR]
+    
+    print('VSM - fitting', flush = True)
     grid_search_regression.fit(X_train_best_LR, y_train)
 
+    print('VSM - predicting', flush=True)
     classifier_LR = grid_search_regression.best_estimator_
     y_pred_regression = classifier_LR.predict(X_validate_best_LR)
     probabilities_regression = classifier_LR.predict_proba(X_validate_best_LR)[:, 1]
 
+    print('End VSM pipeline')
     print('Best parameters found:\n', grid_search_regression.best_params_)
     print("Beste score:", grid_search_regression.best_score_)
     print(f"CL Report of LR:\n", classification_report(y_validate, y_pred_regression, zero_division='warn'))
@@ -174,8 +192,7 @@ def main():
                     kernel = 'linear',
                     shrinking = True,
                     probability=True
-                    ))               
-                    ])
+                    ))])
     
     param_grid_SVM = {
     'classifier__kernel': ['linear', 'poly', 'rbf', 'sigmoid'],
