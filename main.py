@@ -7,10 +7,10 @@ from sklearn.svm import SVC
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import classification_report
 from sklearn.linear_model import LogisticRegression
-from sklearn.preprocessing import FunctionTransformer
 from sklearn.cross_decomposition import PLSRegression
+from sklearn.preprocessing import FunctionTransformer, MinMaxScaler
 from sklearn.model_selection import train_test_split, StratifiedKFold, GridSearchCV
-from functions import check_missing_values, split_features_target, scale_features, rfe_selection, sfs_selection, remove_correlated_features
+from functions import check_missing_values, split_features_target, scale_features, rfe_selection, sfs_selection, remove_highly_correlated_features
 from functions import AUC_plot_and_confusion_matrix
 #%% Load Data
 # Load Training Data
@@ -39,15 +39,12 @@ def main():
         random_state=42
     )
 
-    #Scale features
-    X_train_scaled, X_validate_scaled, scaler = scale_features(X_train, X_validate)
-
     print("Train shape:", X_train_scaled.shape)
-    print("Validation shape:", X_validate_scaled.shape)
+    print("Validation shape:", X_validate.shape)
     print("Label distribution training set:\n", y_train.value_counts())
 
     #Covariance feature elimination
-    X_train_filtered, X_validate_filtered, to_drop, surviving_cols = remove_correlated_features(X_train_scaled, X_validate_scaled)
+    X_train_filtered, X_validate_filtered, to_drop, surviving_cols = remove_correlated_features(X_train_scaled, X_validate)
 
     # Define k-fold
     kf = StratifiedKFold(n_splits=10, shuffle=True, random_state=42)
@@ -55,6 +52,7 @@ def main():
     #--------------------------------------------------------------
     # Pipeline Logistic regression
     pipeline_regression = Pipeline(steps=[
+        ('scaler', MinMaxScaler()),
         ('classifier', LogisticRegression(
                         penalty='l1',
                         solver='saga',
@@ -133,6 +131,7 @@ def main():
         return X.reshape(X.shape[0], -1)
 
     pipeline_pls_da = Pipeline([
+        ('scaler', MinMaxScaler()),
         ('pls', PLSRegression(n_components=1, scale=False, max_iter=10)),
         ('squeeze', FunctionTransformer(squeeze_output)),
         ('classifier', LogisticRegression(
@@ -167,6 +166,7 @@ def main():
     #--------------------------------------------------------------
     # Pipeline Support Vector Machine
     pipeline_SVM = Pipeline(steps=[
+    ('scaler', MinMaxScaler()),
     ('classifier', SVC(
                     random_state=42, 
                     max_iter=1000, 
@@ -241,6 +241,7 @@ def main():
     #--------------------------------------------------------------
     # Pipeline Gradient Boosting
     pipeline_XGB = Pipeline(steps=[
+        ('scaler', MinMaxScaler()),
         ('classifier', xgb.XGBClassifier(
                         random_state=42,
                         n_estimators=1000,
