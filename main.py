@@ -5,14 +5,17 @@ import pandas as pd
 import xgboost as xgb
 from sklearn.svm import SVC
 from sklearn.pipeline import Pipeline
+from sklearn.feature_selection import RFE
 from sklearn.metrics import classification_report
 from sklearn.linear_model import LogisticRegression
 from sklearn.cross_decomposition import PLSRegression
 from feature_engine.selection import DropCorrelatedFeatures
 from sklearn.preprocessing import FunctionTransformer, MinMaxScaler
+from sklearn.feature_selection import SequentialFeatureSelector as SFS
 from sklearn.model_selection import train_test_split, StratifiedKFold, GridSearchCV
 from functions import check_missing_values, remove_highly_correlated_features, split_features_target, scale_features, rfe_selection, sfs_selection
 from functions import AUC_plot_and_confusion_matrix
+
 #%% Load Data
 # Load Training Data
 data = pd.read_csv('hn/Trainings_data.csv', index_col=0)
@@ -24,13 +27,11 @@ print(data['label'].value_counts())
 # Def Preprocessing & Classifier training
 def main():
     # Determine scoring
-    scoring = "accuracy"
+    scoring = "roc_auc"
     # Check missing values
     check_missing_values(data)
-
     #Split dataset into features and encoded labels
     X, y = split_features_target(data)
-
     #Split into train and validateset
     X_train, X_validate, y_train, y_validate = train_test_split(
         X,
@@ -49,10 +50,10 @@ def main():
 
     #--------------------------------------------------------------
     # Pipeline Logistic regression
-    print('\n Start LRM pipeline', flush=True)
     pipeline_regression = Pipeline(steps=[
         ('scaler', MinMaxScaler()),
         ('covariance_filter', DropCorrelatedFeatures(threshold=0.95)),
+        ('selector', SFS),
         ('classifier', LogisticRegression(
                         penalty='l1',
                         solver='saga',
@@ -63,74 +64,31 @@ def main():
                         ])
 
     param_grid_regression = [{
+        'selector': [RFE(LogisticRegression(max_iter=1000, random_state=42), n_features_to_select=15), 
+                    SFS(LogisticRegression(max_iter=1000, random_state=42), n_features_to_select="auto", direction="forward", scoring=scoring, cv=kf, n_jobs=-1, tol=1e-3),
+                    SFS(LogisticRegression(max_iter=1000, random_state=42), n_features_to_select="auto", direction="backward", scoring=scoring, cv=kf, n_jobs=-1, tol=1e-3)],
         'classifier__C': [0.001, 0.01, 0.1, 1, 10],
         'classifier__penalty': ['l1', 'l2'],
         'classifier__solver': ['liblinear']
     },
     {
+        'selector': [RFE(LogisticRegression(max_iter=1000, random_state=42), n_features_to_select=15), 
+                    SFS(LogisticRegression(max_iter=1000, random_state=42), n_features_to_select="auto", direction="forward", scoring=scoring, cv=kf, n_jobs=-1, tol=1e-3),
+                    SFS(LogisticRegression(max_iter=1000, random_state=42), n_features_to_select="auto", direction="backward", scoring=scoring, cv=kf, n_jobs=-1, tol=1e-3)], 
         'classifier__C': [0.001, 0.01, 0.1, 1, 10],
         'classifier__penalty': ['elasticnet'],
         'classifier__solver': ['saga']
     }]
-    #print(X_validate.shape)
-    print('\r  working on LRM grid search...      ', end='', flush=True)
+
     grid_search_regression = GridSearchCV(pipeline_regression, param_grid_regression,
                                         cv=kf, scoring=scoring, refit = True, n_jobs=-1)
 
-    # SFS Forward
-    print('\r  working on LRM SFS forwards...      ', end='', flush=True)
-    X_train_sfs_fwd_LR, X_validate_sfs_fwd_LR, indices_sfs_fwd_LR = sfs_selection(
-        X_train,
-        X_validate,
-        y_train,
-        estimator=LogisticRegression(max_iter=1000, random_state=42),
-        direction="forward",
-        scoring=scoring,
-        cv=kf
-        )
-
-    # SFS backward
-    print('\r  working on LRM FSF backward...      ', end='', flush=True)
-    X_train_sfs_bwd_LR, X_validate_sfs_bwd_LR, indices_sfs_bwd_LR = sfs_selection(
-        X_train,
-        X_validate,
-        y_train,
-        estimator=LogisticRegression(max_iter=1000, random_state=42),
-        direction="backward",
-        scoring = scoring,
-        cv=kf
-        )
-
-    # RFE
-    print('\r  working on LRM RFE...      ', end='', flush=True)
-    X_train_rfe_LR, X_validate_rfe_LR, indices_rfe_LR = rfe_selection(
-        X_train,
-        X_validate,
-        y_train,
-        estimator=LogisticRegression(max_iter=1000, random_state=42),
-        n_features=15
-        )
-    
-    print('\r  working on LRM selector data...      ', end='', flush=True)
-    selector_data_LR = {
-    "SFS_fwd": (X_train_sfs_fwd_LR, X_validate_sfs_fwd_LR, indices_sfs_fwd_LR),
-    "SFS_bwd": (X_train_sfs_bwd_LR, X_validate_sfs_bwd_LR, indices_sfs_bwd_LR),
-    "RFE": (X_train_rfe_LR, X_validate_rfe_LR, indices_rfe_LR)
-    }
-
-    best_selector_LR = max(selector_data_LR, key=lambda k: grid_search_regression.fit(selector_data_LR[k][0], y_train).score(selector_data_LR[k][1], y_validate))
-    print(f"Best Selector: {best_selector_LR}")
-
-    X_train_best_LR, X_validate_best_LR, LR_selector = selector_data_LR[best_selector_LR]
-
-    print('\r  working on LRM fitting...      ', end='', flush=True)
-    grid_search_regression.fit(X_train_best_LR, y_train)
+    grid_search_regression.fit(X_train, y_train)
     classifier_LR = grid_search_regression.best_estimator_
-    print('\r  working on LRM predicting...      ', end='', flush=True)
-    y_pred_regression = classifier_LR.predict(X_validate_best_LR)
-    probabilities_regression = classifier_LR.predict_proba(X_validate_best_LR)[:, 1]
+
+    y_pred_regression = classifier_LR.predict(X_validate)
+    probabilities_regression = classifier_LR.predict_proba(X_validate)[:, 1]
     
-    print('\r  end LRM pipeline      ', end='', flush=True)
     print('Best parameters found:\n', grid_search_regression.best_params_)
     print("Beste score:", grid_search_regression.best_score_)
     print(f"CL Report of LR:\n", classification_report(y_validate, y_pred_regression, zero_division='warn'))
@@ -147,16 +105,8 @@ def main():
     pipeline_pls_da = Pipeline([
         ('scaler', MinMaxScaler()),
         ('covariance_filter', DropCorrelatedFeatures(threshold=0.95)),
-        ('pls', PLSRegression(n_components=10, scale=False, max_iter=10)),
         ('squeeze', FunctionTransformer(squeeze_output)),
-        ('classifier', LogisticRegression(
-                        penalty='elasticnet',
-                        solver='saga',
-                        class_weight='balanced',
-                        l1_ratio=0.85,
-                        random_state=42,
-                        max_iter=1000
-                        ))
+        ('classifier', PLSRegression(n_components=10, scale=False, max_iter=10))
                         ])
 
     param_grid_pls_da = {
