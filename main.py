@@ -8,6 +8,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.metrics import classification_report
 from sklearn.linear_model import LogisticRegression
 from sklearn.cross_decomposition import PLSRegression
+from feature_engine.selection import DropCorrelatedFeatures
 from sklearn.preprocessing import FunctionTransformer, MinMaxScaler
 from sklearn.model_selection import train_test_split, StratifiedKFold, GridSearchCV
 from functions import check_missing_values, remove_highly_correlated_features, split_features_target, scale_features, rfe_selection, sfs_selection
@@ -50,7 +51,7 @@ def main():
     # Pipeline Logistic regression
     pipeline_regression = Pipeline(steps=[
         ('scaler', MinMaxScaler()),
-        ('covariance_filter', FunctionTransformer(func=remove_highly_correlated_features, kw_args={'threshold': 0.95})),
+        ('covariance_filter', DropCorrelatedFeatures(threshold=0.95)),
         ('classifier', LogisticRegression(
                         penalty='l1',
                         solver='saga',
@@ -111,7 +112,7 @@ def main():
     "RFE": (X_train_rfe_LR, X_validate_rfe_LR, indices_rfe_LR)
     }
 
-    best_selector_LR = max(selector_data_LR, key=lambda k: grid_search_regression.fit(selector_data_LR[k][0], y_train).score(selector_data_LR[k][1], y_train))
+    best_selector_LR = max(selector_data_LR, key=lambda k: grid_search_regression.fit(selector_data_LR[k][0], y_train).score(selector_data_LR[k][1], y_validate))
     print(f"Best Selector: {best_selector_LR}")
 
     X_train_best_LR, X_validate_best_LR, LR_selector = selector_data_LR[best_selector_LR]
@@ -135,7 +136,7 @@ def main():
 
     pipeline_pls_da = Pipeline([
         ('scaler', MinMaxScaler()),
-        ('covariance_filter', FunctionTransformer(func=remove_highly_correlated_features, kw_args={'threshold': 0.95})),
+        ('covariance_filter', DropCorrelatedFeatures(threshold=0.95)),
         ('pls', PLSRegression(n_components=10, scale=False, max_iter=10)),
         ('squeeze', FunctionTransformer(squeeze_output)),
         ('classifier', LogisticRegression(
@@ -171,7 +172,7 @@ def main():
     # Pipeline Support Vector Machine
     pipeline_SVM = Pipeline(steps=[
         ('scaler', MinMaxScaler()),
-        ('covariance_filter', FunctionTransformer(func=remove_highly_correlated_features, kw_args={'threshold': 0.95})),
+        ('covariance_filter', DropCorrelatedFeatures(threshold=0.95)),
         ('classifier', SVC(
                         random_state=42, 
                         max_iter=1000, 
@@ -228,7 +229,7 @@ def main():
     "RFE": (X_train_rfe_SVM, X_validate_rfe_SVM, indices_rfe_SVM)
     }
 
-    best_selector_SVM = max(selector_data_SVM, key=lambda k: grid_search_SVM.fit(selector_data_SVM[k][0], y_train).score(selector_data_SVM[k][1], y_train))
+    best_selector_SVM = max(selector_data_SVM, key=lambda k: grid_search_SVM.fit(selector_data_SVM[k][0], y_train).score(selector_data_SVM[k][1], y_validate))
     print(f"Best Selector: {best_selector_SVM}")
 
     X_train_best_SVM, X_validate_best_SVM, SVM_selector = selector_data_SVM[best_selector_SVM]
@@ -247,7 +248,7 @@ def main():
     # Pipeline Gradient Boosting
     pipeline_XGB = Pipeline(steps=[
         ('scaler', MinMaxScaler()),
-        ('covariance_filter', FunctionTransformer(func=remove_highly_correlated_features, kw_args={'threshold': 0.95})),
+        ('covariance_filter', DropCorrelatedFeatures(threshold=0.95)),
         ('classifier', xgb.XGBClassifier(
                         random_state=42,
                         n_estimators=1000,
