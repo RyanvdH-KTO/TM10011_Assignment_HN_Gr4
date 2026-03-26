@@ -51,19 +51,24 @@ def scale_features(X_train, X_test, method="standard"):
 
     return X_train_scaled, X_test_scaled, scaler
 
-def remove_highly_correlated_features(X, threshold=0.95):
-    """Remove features with correlation higher than the threshold."""
-    df = pd.DataFrame(X)
-    corr_matrix = df.corr().abs()
-    upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
-    to_drop = [col for col in upper.columns if any(upper[col] > threshold)]
+def remove_correlated_features(X_train, X_test, threshold=0.95):
+    df_train = pd.DataFrame(X_train)
+    corr_matrix = df_train.corr().abs()
     
-    surviving_cols = [col for col in df.columns if col not in to_drop]
-    surviving_indices = [df.columns.get_loc(col) for col in surviving_cols]
+    upper = corr_matrix.where(
+        np.triu(np.ones(corr_matrix.shape), k=1).astype(bool)
+    )
+    
+    to_drop = [col for col in upper.columns if any(upper[col] > threshold)]
+    surviving_cols = [col for col in df_train.columns if col not in to_drop]
 
-    # Return the filtered data and the surviving indices
-    X_filtered = df[surviving_cols].values
-    return X_filtered, surviving_indices
+    print(f"Removing {len(to_drop)} correlated features")
+    print(f"Features remaining: {len(surviving_cols)}")
+
+    X_train_filtered = df_train.drop(columns=to_drop).values
+    X_test_filtered = pd.DataFrame(X_test).drop(columns=to_drop).values
+
+    return X_train_filtered, X_test_filtered, to_drop, surviving_cols
 
 def plot_correlation_matrix(X_train, to_drop, feature_names=None):
     df = pd.DataFrame(X_train, columns=feature_names)
@@ -108,7 +113,6 @@ def sfs_selection(X_train, X_test, y_train, estimator, direction="forward", scor
         n_features_to_select="auto",
         direction=direction,
         scoring=scoring,
-        tol=1e-3,
         cv=cv,
         n_jobs=-1
     )
