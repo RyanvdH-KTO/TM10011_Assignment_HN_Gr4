@@ -51,21 +51,19 @@ def scale_features(X_train, X_test, method="standard"):
 
     return X_train_scaled, X_test_scaled, scaler
 
-def remove_highly_correlated_features(X_train, X_validate, threshold=0.95):
-    """Remove features with correlation higher than the threshold from both X_train and X_validate."""
-    df_train = pd.DataFrame(X_train)
-    df_validate = pd.DataFrame(X_validate)
-
-    # Compute correlation matrix
-    corr_matrix = df_train.corr().abs()
+def remove_highly_correlated_features(X, threshold=0.95):
+    """Remove features with correlation higher than the threshold."""
+    df = pd.DataFrame(X)
+    corr_matrix = df.corr().abs()
     upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
     to_drop = [col for col in upper.columns if any(upper[col] > threshold)]
+    
+    surviving_cols = [col for col in df.columns if col not in to_drop]
+    surviving_indices = [df.columns.get_loc(col) for col in surviving_cols]
 
-    # Ensure both datasets have the same columns after dropping correlated features
-    X_train_filtered = df_train.drop(columns=to_drop).values
-    X_validate_filtered = df_validate.drop(columns=to_drop).values
-
-    return X_train_filtered, X_validate_filtered, to_drop
+    # Return the filtered data and the surviving indices
+    X_filtered = df[surviving_cols].values
+    return X_filtered, surviving_indices
 
 def plot_correlation_matrix(X_train, to_drop, feature_names=None):
     df = pd.DataFrame(X_train, columns=feature_names)
