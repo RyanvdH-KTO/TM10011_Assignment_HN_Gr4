@@ -80,7 +80,7 @@ def correlation_filter(X, threshold=0.95, fit_cols=[None]):
     else:
         keep_cols = fit_cols[0]
 
-    return df.iloc[:, np.findindex(df.columns, keep_cols)].values
+    return df.iloc[:, keep_cols].values
 
 def plot_correlation_matrix(X_train, to_drop, feature_names=None):
     df = pd.DataFrame(X_train, columns=feature_names)

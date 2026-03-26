@@ -286,7 +286,6 @@ def main():
 # Run model
 if __name__ == "__main__":
     X_train, classifier_LR, classifier_PLS_DA, classifier_SVM, classifier_XGB, LR_selector, SVM_selector = main()
-
 #%% Test with Test Data
 # Load Test Data
 test_data = pd.read_csv('hn/Test_data.csv', index_col=0)
