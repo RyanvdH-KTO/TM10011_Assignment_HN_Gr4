@@ -32,34 +32,6 @@ def split_features_target(data, label_col='label'):
     y = y.map({'T12': 0, 'T34': 1})
     return X, y
 
-# Feature scaling
-def scale_features(X_train, X_test, method="standard"):
-
-    if method == "standard":
-        scaler = StandardScaler()
-
-    elif method == "minmax":
-        scaler = MinMaxScaler()
-
-    elif method == "robust":
-        scaler = RobustScaler()
-
-    else:
-        raise ValueError("Unknown scaler")
-
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled = scaler.transform(X_test)
-
-    return X_train_scaled, X_test_scaled, scaler
-
-def remove_highly_correlated_features(X, threshold=0.95):
-    df = pd.DataFrame(X)
-    corr_matrix = df.corr().abs()
-    upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
-    to_drop = [col for col in upper.columns if any(upper[col] > threshold)]
-    
-    return df.drop(columns=to_drop).values
-
 def plot_correlation_matrix(X_train, to_drop, feature_names=None):
     df = pd.DataFrame(X_train, columns=feature_names)
     
@@ -81,40 +53,6 @@ def plot_correlation_matrix(X_train, to_drop, feature_names=None):
     plt.tight_layout()
     plt.savefig("correlation_matrix.png", dpi=150, bbox_inches="tight")
     plt.show()
-
-# Feature selectors
-
-# RFE: recursive feature elimination
-def rfe_selection(X_train, X_test, y_train, estimator, n_features=10):
-
-    selector = RFE(estimator=estimator, n_features_to_select=n_features)
-
-    X_train_sel = selector.fit_transform(X_train, y_train)
-    X_test_sel = selector.transform(X_test)
-
-    selected_indices = selector.get_support(indices=True)
-
-    return X_train_sel, X_test_sel, selected_indices
-
-# Sequential Feature Selector
-def sfs_selection(X_train, X_test, y_train, estimator, direction="forward", scoring="accuracy", cv=5): # accuracy kan ook met f1 of ROC-AUC, dat nog goed beargumenteren
-    selector = SequentialFeatureSelector(
-        estimator=estimator,
-        n_features_to_select="auto",
-        direction=direction,
-        scoring=scoring,
-        tol=1e-3,
-        cv=cv,
-        n_jobs=-1
-    )
-
-    X_train_sel = selector.fit_transform(X_train, y_train)
-    X_test_sel = selector.transform(X_test)
-
-    selected_indices = selector.get_support(indices=True)
-
-    return X_train_sel, X_test_sel, selected_indices
-
 
 # Plot AUC-curve & confusion matrix
 
