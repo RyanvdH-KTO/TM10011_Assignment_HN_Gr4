@@ -5,6 +5,7 @@ import pandas as pd
 import xgboost as xgb
 from sklearn.svm import SVC
 from sklearn.pipeline import Pipeline
+from sklearn.feature_selection import RFE
 from sklearn.metrics import classification_report
 from sklearn.linear_model import LogisticRegression
 from sklearn.cross_decomposition import PLSRegression
@@ -42,9 +43,9 @@ def main():
     #Scale features
     #X_train_scaled, X_validate_scaled, scaler = scale_features(X_train, X_validate)
 
-    #print("Train shape:", X_train_scaled.shape)
-    #print("Validation shape:", X_validate_scaled.shape)
-    #print("Label distribution training set:\n", y_train.value_counts())
+    print("Train shape:", X_train_filtered.shape)
+    print("Validation shape:", X_validate_filtered.shape)
+    print("Label distribution training set:\n", y_train.value_counts())
 
     #Covariance feature elimination
     #X_train_filtered, X_validate_filtered, to_drop, surviving_cols = remove_correlated_features(X_train_scaled, X_validate_scaled)
@@ -57,6 +58,7 @@ def main():
     pipeline_regression = Pipeline(steps=[
         ('corr_filter', FunctionTransformer(remove_highly_correlated, kw_args={'threshold': 0.95})),
         ('scaler', StandardScaler()),
+        ('rfe', RFE(estimator=LogisticRegression(), n_features_to_select=15)),
         ('classifier', LogisticRegression(
                         penalty='l1',
                         solver='saga',
@@ -74,7 +76,7 @@ def main():
 
     grid_search_regression = GridSearchCV(pipeline_regression, param_grid_regression,
                                         cv=kf, scoring=scoring, refit = True, n_jobs=-1)
-    
+    '''
     # SFS Forward
     X_train_sfs_fwd_LR, X_validate_sfs_fwd_LR, indices_sfs_fwd_LR = sfs_selection(
         X_train_filtered,
@@ -115,12 +117,15 @@ def main():
     best_selector_LR = max(selector_data_LR, key=lambda k: grid_search_regression.fit(selector_data_LR[k][0], y_train).score(selector_data_LR[k][1], y_validate))
     print(f"Best Selector: {best_selector_LR}")
 
+    
     X_train_best_LR, X_validate_best_LR, LR_selector = selector_data_LR[best_selector_LR]
-    grid_search_regression.fit(X_train_best_LR, y_train)
+        ''' 
+    
+    grid_search_regression.fit(X_train_filtered, y_train)
 
     classifier_LR = grid_search_regression.best_estimator_
-    y_pred_regression = classifier_LR.predict(X_validate_best_LR)
-    probabilities_regression = classifier_LR.predict_proba(X_validate_best_LR)[:, 1]
+    y_pred_regression = classifier_LR.predict(X_validate_filtered)
+    probabilities_regression = classifier_LR.predict_proba(X_validate_filtered)[:, 1]
 
     print('Best parameters found:\n', grid_search_regression.best_params_)
     print("Beste score:", grid_search_regression.best_score_)
