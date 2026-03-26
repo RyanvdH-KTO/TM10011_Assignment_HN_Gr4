@@ -49,6 +49,7 @@ def main():
 
     #--------------------------------------------------------------
     # Pipeline Logistic regression
+    print('\n Start LRM pipeline', flush=True)
     pipeline_regression = Pipeline(steps=[
         ('scaler', MinMaxScaler()),
         ('covariance_filter', DropCorrelatedFeatures(threshold=0.95)),
@@ -71,11 +72,13 @@ def main():
         'classifier__penalty': ['elasticnet'],
         'classifier__solver': ['saga']
     }]
-    print(X_validate.shape)
+    #print(X_validate.shape)
+    print('\r  working on LRM grid search...      ', end='', flush=True)
     grid_search_regression = GridSearchCV(pipeline_regression, param_grid_regression,
                                         cv=kf, scoring=scoring, refit = True, n_jobs=-1)
 
     # SFS Forward
+    print('\r  working on LRM SFS forwards...      ', end='', flush=True)
     X_train_sfs_fwd_LR, X_validate_sfs_fwd_LR, indices_sfs_fwd_LR = sfs_selection(
         X_train,
         X_validate,
@@ -87,6 +90,7 @@ def main():
         )
 
     # SFS backward
+    print('\r  working on LRM FSF backward...      ', end='', flush=True)
     X_train_sfs_bwd_LR, X_validate_sfs_bwd_LR, indices_sfs_bwd_LR = sfs_selection(
         X_train,
         X_validate,
@@ -98,6 +102,7 @@ def main():
         )
 
     # RFE
+    print('\r  working on LRM RFE...      ', end='', flush=True)
     X_train_rfe_LR, X_validate_rfe_LR, indices_rfe_LR = rfe_selection(
         X_train,
         X_validate,
@@ -106,6 +111,7 @@ def main():
         n_features=15
         )
     
+    print('\r  working on LRM selector data...      ', end='', flush=True)
     selector_data_LR = {
     "SFS_fwd": (X_train_sfs_fwd_LR, X_validate_sfs_fwd_LR, indices_sfs_fwd_LR),
     "SFS_bwd": (X_train_sfs_bwd_LR, X_validate_sfs_bwd_LR, indices_sfs_bwd_LR),
@@ -117,11 +123,14 @@ def main():
 
     X_train_best_LR, X_validate_best_LR, LR_selector = selector_data_LR[best_selector_LR]
 
+    print('\r  working on LRM fitting...      ', end='', flush=True)
     grid_search_regression.fit(X_train_best_LR, y_train)
     classifier_LR = grid_search_regression.best_estimator_
+    print('\r  working on LRM predicting...      ', end='', flush=True)
     y_pred_regression = classifier_LR.predict(X_validate_best_LR)
     probabilities_regression = classifier_LR.predict_proba(X_validate_best_LR)[:, 1]
-
+    
+    print('\r  end LRM pipeline      ', end='', flush=True)
     print('Best parameters found:\n', grid_search_regression.best_params_)
     print("Beste score:", grid_search_regression.best_score_)
     print(f"CL Report of LR:\n", classification_report(y_validate, y_pred_regression, zero_division='warn'))
@@ -134,6 +143,7 @@ def main():
             X = X[0]
         return X.reshape(X.shape[0], -1)
 
+    print('\n Start PLS pipeline', flush=True)
     pipeline_pls_da = Pipeline([
         ('scaler', MinMaxScaler()),
         ('covariance_filter', DropCorrelatedFeatures(threshold=0.95)),
@@ -154,15 +164,21 @@ def main():
         'classifier__C': [0.001, 0.01, 0.1, 1, 10]
     }
 
+    print('\r  working on PLS grid search...      ', end='', flush=True)
     grid_search_pls_da = GridSearchCV(pipeline_pls_da, param_grid_pls_da, 
                                     cv=kf, scoring=scoring, refit = True, n_jobs=-1)
     
+    
+    print('\r  working on PLS fitting...      ', end='', flush=True)
     grid_search_pls_da.fit(X_train, y_train)
 
     classifier_PLS_DA = grid_search_pls_da.best_estimator_ 
+    
+    print('\r  bworking on PLS predicting...      ', end='', flush=True)
     y_pred_pls_da = classifier_PLS_DA.predict(X_validate)
     probabilities_pls_da = classifier_PLS_DA.predict_proba(X_validate)
 
+    print('\r  end PLS pipeline      ', end='', flush=True)
     print('Best parameters found:\n', grid_search_pls_da.best_params_)
     print("Beste score:", grid_search_pls_da.best_score_)
     print(f"CL Report of PLS-DA:\n", classification_report(y_validate, y_pred_pls_da, zero_division='warn'))
@@ -170,6 +186,7 @@ def main():
 
     #--------------------------------------------------------------
     # Pipeline Support Vector Machine
+    print('\n Start SVM pipeline', flush=True)
     pipeline_SVM = Pipeline(steps=[
         ('scaler', MinMaxScaler()),
         ('covariance_filter', DropCorrelatedFeatures(threshold=0.95)),
@@ -189,10 +206,13 @@ def main():
         'classifier__gamma':['auto', 'scale', 0.0001, 0.001, 0.01, 1, 10, 100, 1000]
         }
 
+
+    print('\r  working on SVM grid search...      ', end='', flush=True)
     grid_search_SVM = GridSearchCV(pipeline_SVM, param_grid_SVM,
                                 cv=kf, scoring=scoring, refit = True, n_jobs=-1)
 
     # SFS Forward
+    print('\r  bworking on SVM SFS forward...      ', end='', flush=True)
     X_train_sfs_fwd_SVM, X_validate_sfs_fwd_SVM, indices_sfs_fwd_SVM = sfs_selection(
         X_train,
         X_validate,
@@ -204,6 +224,7 @@ def main():
         )
 
     # SFS backward
+    print('\r  working on SVM SFS backward...      ', end='', flush=True)
     X_train_sfs_bwd_SVM, X_validate_sfs_bwd_SVM, indices_sfs_bwd_SVM = sfs_selection(
         X_train,
         X_validate,
@@ -215,6 +236,7 @@ def main():
         )
 
     # RFE
+    print('\r  working on SVM RFE...      ', end='', flush=True)
     X_train_rfe_SVM, X_validate_rfe_SVM, indices_rfe_SVM = rfe_selection(
         X_train,
         X_validate,
@@ -223,6 +245,8 @@ def main():
         n_features=15
         )
     
+    
+    print('\r  bworking on SVM selector data...      ', end='', flush=True)
     selector_data_SVM = {
     "SFS_fwd": (X_train_sfs_fwd_SVM, X_validate_sfs_fwd_SVM, indices_sfs_fwd_SVM),
     "SFS_bwd": (X_train_sfs_bwd_SVM, X_validate_sfs_bwd_SVM, indices_sfs_bwd_SVM),
@@ -233,12 +257,16 @@ def main():
     print(f"Best Selector: {best_selector_SVM}")
 
     X_train_best_SVM, X_validate_best_SVM, SVM_selector = selector_data_SVM[best_selector_SVM]
+    
+    print('\r  working on SVM fitting...      ', end='', flush=True)
     grid_search_SVM.fit(X_train_best_SVM, y_train)
-
     classifier_SVM = grid_search_SVM.best_estimator_ 
+
+    print('\r  working on SVM predicting...      ', end='', flush=True)
     y_pred_SVM = classifier_SVM.predict(X_validate_best_SVM) 
     probabilities_SVM = classifier_SVM.predict_proba(X_validate_best_SVM)
 
+    print('\r  end SVM pipeline      ', end='', flush=True)
     print('Best parameters found:\n', grid_search_SVM.best_params_)
     print("Beste score:", grid_search_SVM.best_score_)
     print(f"CL Report of SVM:\n", classification_report(y_validate, y_pred_SVM, zero_division='warn'))
@@ -246,6 +274,7 @@ def main():
     
     #--------------------------------------------------------------
     # Pipeline Gradient Boosting
+    print('\n Start XGB pipeline', flush=True)
     pipeline_XGB = Pipeline(steps=[
         ('scaler', MinMaxScaler()),
         ('covariance_filter', DropCorrelatedFeatures(threshold=0.95)),
@@ -264,17 +293,23 @@ def main():
     'classifier__subsample': [0.8, 1.0],
     'classifier__colsample_bytree': [0.8, 1.0]}
 
+
+    print('\r  working on XGB grid search...      ', end='', flush=True)
     grid_search_XGB = GridSearchCV(pipeline_XGB, param_grid_XGB, 
                                 cv=kf, scoring=scoring, refit = True, n_jobs=-1)
 
+    print('\r  working on XGB XGB...      ', end='', flush=True)
     grid_search_XGB.fit(X_train, y_train)
 
     classifier_XGB = grid_search_XGB.best_estimator_ 
+
+    print('\r  working on XGB predicting...      ', end='', flush=True)
     y_pred_XGB = classifier_XGB.predict(X_validate)  
     probabilities_XGB = classifier_XGB.predict_proba(X_validate)[:, 1]
     if probabilities_XGB.ndim == 1:
         probabilities_XGB = np.column_stack([1 - probabilities_XGB, probabilities_XGB])
 
+    print('\r  end XGB pipeline      ', end='', flush=True)
     print('Best parameters found:\n', grid_search_XGB.best_params_)
     print("Beste score:", grid_search_XGB.best_score_)
     print(f"CL Report of XGB:\n", classification_report(y_validate, y_pred_XGB, zero_division='warn'))
