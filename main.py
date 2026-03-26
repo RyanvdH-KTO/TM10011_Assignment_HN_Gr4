@@ -90,7 +90,7 @@ def main():
         )
 
     # SFS backward
-    print('\r  working on LRM FSF backward...      ', end='', flush=True)
+    print('\r  working on LRM SFS backward...      ', end='', flush=True)
     X_train_sfs_bwd_LR, X_validate_sfs_bwd_LR, indices_sfs_bwd_LR = sfs_selection(
         X_train,
         X_validate,
