@@ -31,7 +31,7 @@ def main():
     X, y = split_features_target(data)
 
     #Split into train and validateset
-    X_train, X_validate, y_train, y_validate = train_test_split(
+    X_train_filtered, X_validate_filtered, y_train, y_validate = train_test_split(
         X,
         y,
         test_size=0.2,
@@ -39,12 +39,12 @@ def main():
         random_state=42
     )
 
-    print("Train shape:", X_train_scaled.shape)
-    print("Validation shape:", X_validate.shape)
+    print("Train shape:", X_train_filtered.shape)
+    print("Validation shape:", X_validate_filtered.shape)
     print("Label distribution training set:\n", y_train.value_counts())
 
     #Covariance feature elimination
-    X_train_filtered, X_validate_filtered, to_drop, surviving_cols = remove_correlated_features(X_train_scaled, X_validate)
+#, to_drop, surviving_cols = remove_correlated_features(X_train_scaled, X_validate)
 
     # Define k-fold
     kf = StratifiedKFold(n_splits=10, shuffle=True, random_state=42)
@@ -53,6 +53,7 @@ def main():
     # Pipeline Logistic regression
     pipeline_regression = Pipeline(steps=[
         ('scaler', MinMaxScaler()),
+        ('covariance_filter', FunctionTransformer(remove_highly_correlated_features)),
         ('classifier', LogisticRegression(
                         penalty='l1',
                         solver='saga',

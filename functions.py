@@ -103,6 +103,7 @@ def sfs_selection(X_train, X_test, y_train, estimator, direction="forward", scor
         n_features_to_select="auto",
         direction=direction,
         scoring=scoring,
+        tol=1e-3
         cv=cv,
         n_jobs=-1
     )
