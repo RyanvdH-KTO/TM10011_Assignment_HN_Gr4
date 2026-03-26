@@ -31,7 +31,7 @@ def main():
     X, y = split_features_target(data)
 
     #Split into train and validateset
-    X_train, X_validate, y_train, y_validate = train_test_split(
+    X_train_filtered, X_validate_filtered, y_train, y_validate= train_test_split(
         X,
         y,
         test_size=0.2,
