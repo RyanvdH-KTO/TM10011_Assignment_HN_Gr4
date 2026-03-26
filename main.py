@@ -7,11 +7,11 @@ from sklearn.svm import SVC
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import classification_report
 from sklearn.linear_model import LogisticRegression
-from sklearn.preprocessing import FunctionTransformer
 from sklearn.cross_decomposition import PLSRegression
+from sklearn.preprocessing import FunctionTransformer, StandardScaler
 from sklearn.model_selection import train_test_split, StratifiedKFold, GridSearchCV
 from functions import check_missing_values, split_features_target, scale_features, rfe_selection, sfs_selection, remove_correlated_features
-from functions import AUC_plot_and_confusion_matrix
+from functions import AUC_plot_and_confusion_matrix, remove_highly_correlated
 #%% Load Data
 # Load Training Data
 data = pd.read_csv('hn/Trainings_data.csv', index_col=0)
@@ -40,14 +40,14 @@ def main():
     )
 
     #Scale features
-    X_train_scaled, X_validate_scaled, scaler = scale_features(X_train, X_validate)
+    #X_train_scaled, X_validate_scaled, scaler = scale_features(X_train, X_validate)
 
-    print("Train shape:", X_train_scaled.shape)
-    print("Validation shape:", X_validate_scaled.shape)
-    print("Label distribution training set:\n", y_train.value_counts())
+    #print("Train shape:", X_train_scaled.shape)
+    #print("Validation shape:", X_validate_scaled.shape)
+    #print("Label distribution training set:\n", y_train.value_counts())
 
     #Covariance feature elimination
-    X_train_filtered, X_validate_filtered, to_drop, surviving_cols = remove_correlated_features(X_train_scaled, X_validate_scaled)
+    #X_train_filtered, X_validate_filtered, to_drop, surviving_cols = remove_correlated_features(X_train_scaled, X_validate_scaled)
 
     # Define k-fold
     kf = StratifiedKFold(n_splits=10, shuffle=True, random_state=42)
@@ -55,6 +55,8 @@ def main():
     #--------------------------------------------------------------
     # Pipeline Logistic regression
     pipeline_regression = Pipeline(steps=[
+        ('corr_filter', FunctionTransformer(remove_highly_correlated, kw_args={'threshold': 0.95})),
+        ('scaler', StandardScaler()),
         ('classifier', LogisticRegression(
                         penalty='l1',
                         solver='saga',

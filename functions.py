@@ -51,6 +51,16 @@ def scale_features(X_train, X_test, method="standard"):
 
     return X_train_scaled, X_test_scaled, scaler
 
+def remove_highly_correlated(X, threshold=0.95):
+    """Single function version - NO CLASSES!"""
+    df = pd.DataFrame(X)
+    corr_matrix = df.corr().abs()
+    upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
+    to_drop = [col for col in upper.columns if any(upper[col] > threshold)]
+    
+    print(f"Removing {len(to_drop)} correlated features")
+    return df.drop(columns=to_drop).values
+
 def remove_correlated_features(X_train, X_test, threshold=0.95):
     df_train = pd.DataFrame(X_train)
     corr_matrix = df_train.corr().abs()
