@@ -59,7 +59,7 @@ def main():
                         solver='saga',
                         class_weight='balanced',
                         random_state=42,
-                        max_iter=1000
+                        max_iter=10000
                         ))
                         ])
 
@@ -128,7 +128,7 @@ def main():
         ('covariance_filter', DropCorrelatedFeatures(threshold=0.95)),
         ('classifier', SVC(
                         random_state=42, 
-                        max_iter=1000, 
+                        max_iter=10000, 
                         class_weight='balanced', 
                         kernel = 'linear',
                         shrinking = True,
