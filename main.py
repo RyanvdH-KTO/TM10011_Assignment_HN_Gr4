@@ -60,7 +60,7 @@ def main():
 
     #--------------------------------------------------------------
     # Pipeline Logistic regression
-    print('Start VSM pipeline', flush=True)
+    print('\n Start VSM pipeline', flush=True)
     pipeline_regression = Pipeline(steps=[
         ('scaler', StandardScaler()),
         ('corr', DropCorrelatedFeatures(threshold=0.95)),
@@ -70,10 +70,10 @@ def main():
                         class_weight='balanced',
                         random_state=42,
                         max_iter=1000
-                        ))], verbose = True)
+                        ))])
      
 
-    print('\n start VSM grid search', flush=True)
+    print('\r  bezig met VSM grid search...      ', end='', flush=True)
     param_grid_regression = {
         'classifier__C': [0.001, 0.01, 0.1, 1, 10],
         'classifier__penalty': ['l1', 'l2', 'elasticnet'],
@@ -83,41 +83,41 @@ def main():
     grid_search_regression = GridSearchCV(pipeline_regression, param_grid_regression,
                                         cv=kf, scoring=scoring, refit = True, n_jobs=-1, verbose = 3)
     
-    print('VSM - SFS forward', flush=True)
+    print('\r  bezig met VSM - SFS forward...      ', end='', flush=True)
     # SFS Forward
     X_train_sfs_fwd_LR, X_validate_sfs_fwd_LR, indices_sfs_fwd_LR = sfs_selection(
         X_train,
         X_validate,
         y_train,
-        estimator=LogisticRegression(max_iter=1000, random_state=42),
+        estimator=LogisticRegression(max_iter=1, random_state=42),
         direction="forward",
         scoring=scoring,
         cv=kf
         )
 
-    print('VSM - SFS backward', flush=True)
+    print('\r  bezig met VSM - SFS backward...      ', end='', flush=True)
     # SFS backward
     X_train_sfs_bwd_LR, X_validate_sfs_bwd_LR, indices_sfs_bwd_LR = sfs_selection(
         X_train,
         X_validate,
         y_train,
-        estimator=LogisticRegression(max_iter=1000, random_state=42),
+        estimator=LogisticRegression(max_iter=1, random_state=42),
         direction="backward",
         scoring = scoring,
         cv=kf
         )
 
-    print('VSM - RFE', flush=True)
+    print('\r  bezig met VSM - RFE...      ', end='', flush=True)
     # RFE
     X_train_rfe_LR, X_validate_rfe_LR, indices_rfe_LR = rfe_selection(
         X_train,
         X_validate,
         y_train,
-        estimator=LogisticRegression(max_iter=1000, random_state=42),
+        estimator=LogisticRegression(max_iter=1, random_state=42),
         n_features=15
         )
     
-    print('VSM - selector data', flush=True)
+    print('\r  bezig met VSM - selector data...      ', end='', flush=True)
     selector_data_LR = {
     "SFS_fwd": (X_train_sfs_fwd_LR, X_validate_sfs_fwd_LR, indices_sfs_fwd_LR),
     "SFS_bwd": (X_train_sfs_bwd_LR, X_validate_sfs_bwd_LR, indices_sfs_bwd_LR),
@@ -125,19 +125,21 @@ def main():
     }
 
     best_selector_LR = max(selector_data_LR, key=lambda k: grid_search_regression.fit(selector_data_LR[k][0], y_train).score(selector_data_LR[k][1], y_validate))
-    print(f"Best Selector: {best_selector_LR}")
+    
 
     X_train_best_LR, X_validate_best_LR, LR_selector = selector_data_LR[best_selector_LR]
     
-    print('VSM - fitting', flush = True)
+    print('\r  bezig met VSM - fitting...      ', end='', flush=True)
     grid_search_regression.fit(X_train_best_LR, y_train)
 
-    print('VSM - predicting', flush=True)
+    print('\r  bezig met VSM - predicting...      ', end='', flush=True)
     classifier_LR = grid_search_regression.best_estimator_
     y_pred_regression = classifier_LR.predict(X_validate_best_LR)
     probabilities_regression = classifier_LR.predict_proba(X_validate_best_LR)[:, 1]
 
-    print('End VSM pipeline')
+    print('\rEnd VSM pipeline...      ', end='', flush=True)
+    print(f"Best Selector: {best_selector_LR}")
+    
     print('Best parameters found:\n', grid_search_regression.best_params_)
     print("Beste score:", grid_search_regression.best_score_)
     print(f"CL Report of LR:\n", classification_report(y_validate, y_pred_regression, zero_division='warn'))
