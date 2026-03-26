@@ -89,7 +89,7 @@ def main():
         X_train,
         X_validate,
         y_train,
-        estimator=LogisticRegression(max_iter=1, random_state=42),
+        estimator=LogisticRegression(max_iter=1000, random_state=42),
         direction="forward",
         scoring=scoring,
         cv=kf
@@ -101,7 +101,7 @@ def main():
         X_train,
         X_validate,
         y_train,
-        estimator=LogisticRegression(max_iter=1, random_state=42),
+        estimator=LogisticRegression(max_iter=1000, random_state=42),
         direction="backward",
         scoring = scoring,
         cv=kf
@@ -113,7 +113,7 @@ def main():
         X_train,
         X_validate,
         y_train,
-        estimator=LogisticRegression(max_iter=1, random_state=42),
+        estimator=LogisticRegression(max_iter=1000, random_state=42),
         n_features=15
         )
     
