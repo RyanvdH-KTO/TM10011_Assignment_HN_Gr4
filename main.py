@@ -43,9 +43,6 @@ def main():
     print("Validation shape:", X_validate.shape)
     print("Label distribution training set:\n", y_train.value_counts())
 
-    #Covariance feature elimination
-#, to_drop, surviving_cols = remove_correlated_features(X_train_scaled, X_validate)
-
     # Define k-fold
     kf = StratifiedKFold(n_splits=10, shuffle=True, random_state=42)
 
@@ -139,6 +136,7 @@ def main():
 
     pipeline_pls_da = Pipeline([
         ('scaler', MinMaxScaler()),
+        ('covariance_filter', FunctionTransformer(func=remove_highly_correlated_features, kw_args={'threshold': 0.95})),
         ('pls', PLSRegression(n_components=1, scale=False, max_iter=10)),
         ('squeeze', FunctionTransformer(squeeze_output)),
         ('classifier', LogisticRegression(
@@ -159,11 +157,11 @@ def main():
     grid_search_pls_da = GridSearchCV(pipeline_pls_da, param_grid_pls_da, 
                                     cv=kf, scoring=scoring, refit = True, n_jobs=-1)
     
-    grid_search_pls_da.fit(X_train_filtered, y_train)
+    grid_search_pls_da.fit(X_train, y_train)
 
     classifier_PLS_DA = grid_search_pls_da.best_estimator_ 
-    y_pred_pls_da = classifier_PLS_DA.predict(X_validate_filtered)
-    probabilities_pls_da = classifier_PLS_DA.predict_proba(X_validate_filtered)
+    y_pred_pls_da = classifier_PLS_DA.predict(X_validate)
+    probabilities_pls_da = classifier_PLS_DA.predict_proba(X_validate)
 
     print('Best parameters found:\n', grid_search_pls_da.best_params_)
     print("Beste score:", grid_search_pls_da.best_score_)
@@ -173,30 +171,31 @@ def main():
     #--------------------------------------------------------------
     # Pipeline Support Vector Machine
     pipeline_SVM = Pipeline(steps=[
-    ('scaler', MinMaxScaler()),
-    ('classifier', SVC(
-                    random_state=42, 
-                    max_iter=1000, 
-                    class_weight='balanced', 
-                    kernel = 'linear',
-                    shrinking = True,
-                    probability=True
-                    ))               
-                    ])
+        ('scaler', MinMaxScaler()),
+        ('covariance_filter', FunctionTransformer(func=remove_highly_correlated_features, kw_args={'threshold': 0.95})),
+        ('classifier', SVC(
+                        random_state=42, 
+                        max_iter=1000, 
+                        class_weight='balanced', 
+                        kernel = 'linear',
+                        shrinking = True,
+                        probability=True
+                        ))               
+                        ])
     
     param_grid_SVM = {
-    'classifier__kernel': ['linear', 'poly', 'rbf', 'sigmoid'],
-    'classifier__C': [0.0001, 0.001, 0.01, 1, 5, 10, 100, 1000],
-    'classifier__gamma':['auto', 'scale', 0.0001, 0.001, 0.01, 1, 10, 100, 1000]
-    }
+        'classifier__kernel': ['linear', 'poly', 'rbf', 'sigmoid'],
+        'classifier__C': [0.0001, 0.001, 0.01, 1, 5, 10, 100, 1000],
+        'classifier__gamma':['auto', 'scale', 0.0001, 0.001, 0.01, 1, 10, 100, 1000]
+        }
 
     grid_search_SVM = GridSearchCV(pipeline_SVM, param_grid_SVM,
                                 cv=kf, scoring=scoring, refit = True, n_jobs=-1)
 
     # SFS Forward
     X_train_sfs_fwd_SVM, X_validate_sfs_fwd_SVM, indices_sfs_fwd_SVM = sfs_selection(
-        X_train_filtered,
-        X_validate_filtered,
+        X_train,
+        X_validate,
         y_train,
         estimator=SVC(max_iter=1000, random_state=42),
         direction="forward",
@@ -206,8 +205,8 @@ def main():
 
     # SFS backward
     X_train_sfs_bwd_SVM, X_validate_sfs_bwd_SVM, indices_sfs_bwd_SVM = sfs_selection(
-        X_train_filtered,
-        X_validate_filtered,
+        X_train,
+        X_validate,
         y_train,
         estimator=SVC(max_iter=1000, random_state=42),
         direction="backward",
@@ -217,8 +216,8 @@ def main():
 
     # RFE
     X_train_rfe_SVM, X_validate_rfe_SVM, indices_rfe_SVM = rfe_selection(
-        X_train_filtered,
-        X_validate_filtered,
+        X_train,
+        X_validate,
         y_train,
         estimator=SVC(kernel="linear", max_iter=1000, random_state=42),
         n_features=15
@@ -249,6 +248,7 @@ def main():
     # Pipeline Gradient Boosting
     pipeline_XGB = Pipeline(steps=[
         ('scaler', MinMaxScaler()),
+        ('covariance_filter', FunctionTransformer(func=remove_highly_correlated_features, kw_args={'threshold': 0.95})),
         ('classifier', xgb.XGBClassifier(
                         random_state=42,
                         n_estimators=1000,
@@ -267,11 +267,11 @@ def main():
     grid_search_XGB = GridSearchCV(pipeline_XGB, param_grid_XGB, 
                                 cv=kf, scoring=scoring, refit = True, n_jobs=-1)
 
-    grid_search_XGB.fit(X_train_filtered, y_train)
+    grid_search_XGB.fit(X_train, y_train)
 
     classifier_XGB = grid_search_XGB.best_estimator_ 
-    y_pred_XGB = classifier_XGB.predict(X_validate_filtered)  
-    propabilities_XGB = classifier_XGB.predict_proba(X_validate_filtered)[:, 1]
+    y_pred_XGB = classifier_XGB.predict(X_validate)  
+    propabilities_XGB = classifier_XGB.predict_proba(X_validate)[:, 1]
     if propabilities_XGB.ndim == 1:
         propabilities_XGB = np.column_stack([1 - propabilities_XGB, propabilities_XGB])
 
