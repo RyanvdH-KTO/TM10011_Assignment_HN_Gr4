@@ -5,12 +5,13 @@ import pandas as pd
 import xgboost as xgb
 from sklearn.svm import SVC
 from sklearn.pipeline import Pipeline
+
 from sklearn.metrics import classification_report
 from sklearn.linear_model import LogisticRegression
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.preprocessing import FunctionTransformer, MinMaxScaler
 from sklearn.model_selection import train_test_split, StratifiedKFold, GridSearchCV
-from functions import check_missing_values, split_features_target, scale_features, rfe_selection, sfs_selection, make_correlation_filter
+from functions import check_missing_values, split_features_target, scale_features, rfe_selection, sfs_selection, correlation_filter
 from functions import AUC_plot_and_confusion_matrix
 #%% Load Data
 # Load Training Data
@@ -53,7 +54,7 @@ def main():
     # Pipeline Logistic regression
     pipeline_regression = Pipeline(steps=[
         ('scaler', MinMaxScaler()),
-        ('covariance_filter', make_correlation_filter(threshold=0.95)),
+        ('covariance_filter', correlation_filter(threshold=0.95)),
         ('classifier', LogisticRegression(
                         penalty='l1',
                         solver='saga',
@@ -63,11 +64,16 @@ def main():
                         ))
                         ])
 
-    param_grid_regression = {
+    param_grid_regression = [{
         'classifier__C': [0.001, 0.01, 0.1, 1, 10],
-        'classifier__penalty': ['l1', 'l2', 'elasticnet'],
-        'classifier__solver': ['liblinear', 'saga']
-    }
+        'classifier__penalty': ['l1', 'l2'],
+        'classifier__solver': ['liblinear']
+    },
+    {
+        'classifier__C': [0.001, 0.01, 0.1, 1, 10],
+        'classifier__penalty': ['elasticnet'],
+        'classifier__solver': ['saga']
+    }]
     print(X_validate.shape)
     grid_search_regression = GridSearchCV(pipeline_regression, param_grid_regression,
                                         cv=kf, scoring=scoring, refit = True, n_jobs=-1)
