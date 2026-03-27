@@ -12,7 +12,8 @@ from sklearn.cross_decomposition import PLSRegression
 from feature_engine.selection import DropCorrelatedFeatures
 from sklearn.feature_selection import SequentialFeatureSelector as SFS
 from sklearn.model_selection import train_test_split, StratifiedKFold, GridSearchCV
-from functions import check_missing_values, split_features_target, AUC_plot_and_confusion_matrix, ROC_STD_plot, plot_learning_curve
+from functions import check_missing_values, split_features_target, AUC_plot_and_confusion_matrix, ROC_STD_plot
+from functions import learning_curve_plot
 
 #%% Function to squeeze output from PLS -- LG doesnt work > 2D
 def squeeze_output(X):
@@ -138,12 +139,12 @@ def main():    #%% Load Data
 
     train_sizes, train_scores, val_scores = learning_curve(
         classifier_PLS_DA, X_train, y_train,
-        cv=5, scoring="roc_auc",
+        cv=StratifiedKFold(n_splits=5, shuffle=True, random_state=42), scoring="roc_auc",
         train_sizes=np.linspace(0.1, 1.0, 10),
         n_jobs=-1
     )
 
-    plot_learning_curve(
+    learning_curve_plot(
         train_sizes,
         np.mean(train_scores, axis=1), np.std(train_scores, axis=1),
         np.mean(val_scores,   axis=1), np.std(val_scores,   axis=1),
