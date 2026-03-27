@@ -288,17 +288,13 @@ print(test_data['label'].value_counts())                                        
 
 check_missing_values(test_data)                                                            # check for missing values
 X_test, y_test = split_features_target(test_data)                                          # split the test dataset into features and target labels
-X_test_selected_LR = X_test[:, LR_selector]                                                # select the features used by the Logistic Regression model
-X_test_selected_SVM = X_test[:, SVM_selector]                                              # select the features used by the SVM model
 
 print("Test shape:", X_test.shape)                                                         # print the shape of the full test feature set
-print("Test LR shape", X_test_selected_LR.shape)                                           # print the shape of the selected test features for Logistic Regression
-print("Test SVM shape", X_test_selected_SVM.shape)                                         # print the shape of the selected test features for SVM
 print("Label distribution training set:\n", y_test.value_counts())                         # print the class distribution of the test target labels
 
 #%% LR test
-y_pred_regression = classifier_LR.predict(X_test_selected_LR)                              # predict de labels
-probabilities_regression = classifier_LR.predict_proba(X_test_selected_LR)[:, 1]           # predict the probabilities
+y_pred_regression = classifier_LR.predict(X_test)                              # predict de labels
+probabilities_regression = classifier_LR.predict_proba(X_test)[:, 1]           # predict the probabilities
 print(y_pred_regression.shape)                                                             # print the shape of the predicted labels
 print(f"CL Report of LR:\n", classification_report(y_test, y_pred_regression, zero_division='warn'))      # print the classification metrics
 AUC_plot_and_confusion_matrix(y_test, probabilities_regression,                            # plot the ROC-AUC curve and cofusion matrix
