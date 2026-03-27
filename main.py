@@ -106,32 +106,35 @@ def main():                                                                     
         'classifier__penalty': ['elasticnet'],                                             # use elasticnet als penalty
         'classifier__solver': ['saga']}]                                                   # use saga as solver
    
-    tprs = []
-    aucs = []
-    mean_fpr = np.linspace(0, 1, 100)
+    tprs = []                                                                              # make a empty variable to store the true positive rate curves
+    aucs = []                                                                              # make a empty variable to store the auc values
+    mean_fpr = np.linspace(0, 1, 100)                                                      # create 100 evenly spaced FPR values to use as a common x-axis for averaging ROC curves across folds
 
-    for train_idx, val_idx in outer_cv.split(X_train,y_train):
-        X_tr, X_val = X_train.iloc[train_idx], X_train.iloc[val_idx]
-        y_tr, y_val = y_train.iloc[train_idx], y_train.iloc[val_idx]
+    for train_idx, val_idx in outer_cv.split(X_train,y_train):                             # loop through the outer cross-validation folds
+        X_tr, X_val = X_train.iloc[train_idx], X_train.iloc[val_idx]                       # split the training data into 2 sets
+        y_tr, y_val = y_train.iloc[train_idx], y_train.iloc[val_idx]                       # split the label data into 2 sets
 
-        grid_search_regression = GridSearchCV(pipeline_regression, param_grid_regression,
-                                        cv=inner_cv, scoring=scoring, refit = True, n_jobs=-1)
-        grid_search_regression.fit(X_tr, y_tr)
-        best_model = grid_search_regression.best_estimator_
+        grid_search_regression = GridSearchCV(pipeline_regression, param_grid_regression,  # preform the grid search
+                                        cv=inner_cv,                                       # use the previously defined inner cross-validation folds
+                                        scoring=scoring,                                   # scoring is based on the earlier defines variable: ROC-AUC
+                                        refit = True,                                      # retrain the best model on the full training set
+                                        n_jobs=-1)                                         # use all available CPU cores
+        grid_search_regression.fit(X_tr, y_tr)                                             # fit the grid search
+        best_model = grid_search_regression.best_estimator_                                # store the best model
 
-        probs = best_model.predict_proba(X_val)[:, 1]
+        probs = best_model.predict_proba(X_val)[:, 1]                                      # predicht the probabilities
 
-        fpr, tpr, _ = roc_curve(y_val, probs)
-        tpr_interp = np.interp(mean_fpr, fpr, tpr)
-        tpr_interp[0] = 0.0
+        fpr, tpr, _ = roc_curve(y_val, probs)                                              # calculate the roc curve
+        tpr_interp = np.interp(mean_fpr, fpr, tpr)                                         # interpolate the TPR valies onto the common FPR axis
+        tpr_interp[0] = 0.0                                                                # force to ROC curve to start at 0
 
-        tprs.append(tpr_interp)
-        aucs.append(auc(fpr, tpr))
+        tprs.append(tpr_interp)                                                            # store the interpoled TPR curve 
+        aucs.append(auc(fpr, tpr))                                                         # store the AUC values
 
-    mean_tpr = np.mean(tprs, axis=0)
-    std_tpr = np.std(tprs, axis=0)
-    mean_auc = np.mean(aucs)
-    std_auc = np.std(aucs)
+    mean_tpr = np.mean(tprs, axis=0)                                                       # calculate the mean of the true positive rate
+    std_tpr = np.std(tprs, axis=0)                                                         # calculate the std of true positive rate
+    mean_auc = np.mean(aucs)                                                               # calculate the mean of the auc
+    std_auc = np.std(aucs)                                                                 # calculate the std of the auc
 
     final_grid_search_regression = GridSearchCV(                                           # search the best parameters combination
         pipeline_regression,                                                               # for this model
@@ -153,7 +156,7 @@ def main():                                                                     
     AUC_plot_and_confusion_matrix(y_validate, probabilities_regression,                    # plot the ROC-AUC curve and confusion matrix
                                   y_validate, y_pred_regression,                           # use true matrix labels and predicted labels
                                   "Logistic regression model")                             # set the title of the plot
-    ROC_STD_plot(mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr, "Logistic regression model")
+    ROC_STD_plot(mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr, "Logistic regression model") # plot the ROC STD 
     
     # Pipeline PLS-DA --------------------------------------------------------------------
     def squeeze_output(X):                                                                 # define a definition
@@ -181,32 +184,35 @@ def main():                                                                     
         'pls__n_components': [5, 10, 15],                                                  # test different numbers of PLS components
         'classifier__C': [0.001, 0.01, 0.1, 1, 10]}                                        # test different regularization strengths
 
-    tprs = []
-    aucs = []
-    mean_fpr = np.linspace(0, 1, 100)
+    tprs = []                                                                              # make a empty variable to store the true positive rate curves
+    aucs = []                                                                              # make a empty variable to store the auc values
+    mean_fpr = np.linspace(0, 1, 100)                                                      # create 100 evenly spaced FPR values to use as a common x-axis for averaging ROC curves across folds
 
-    for train_idx, val_idx in outer_cv.split(X_train,y_train):
-        X_tr, X_val = X_train.iloc[train_idx], X_train.iloc[val_idx]
-        y_tr, y_val = y_train.iloc[train_idx], y_train.iloc[val_idx]
+    for train_idx, val_idx in outer_cv.split(X_train,y_train):                             # loop through the outer cross-validation folds
+        X_tr, X_val = X_train.iloc[train_idx], X_train.iloc[val_idx]                       # split the training data into 2 sets
+        y_tr, y_val = y_train.iloc[train_idx], y_train.iloc[val_idx]                       # split the label data into 2 sets
 
-        grid_search_pls_da = GridSearchCV(pipeline_pls_da, param_grid_pls_da,
-                                        cv=inner_cv, scoring=scoring, refit = True, n_jobs=-1)
-        grid_search_pls_da.fit(X_tr, y_tr)
-        best_model = grid_search_pls_da.best_estimator_
+        grid_search_pls_da = GridSearchCV(pipeline_pls_da, param_grid_pls_da,              # preform the grid search
+                                        cv=inner_cv,                                       # use the previously defined inner cross-validation folds
+                                        scoring=scoring,                                   # scoring is based on the earlier defines variable: ROC-AUC
+                                        refit = True,                                      # retrain the best model on the full training set
+                                        n_jobs=-1)                                         # use all available CPU cores
+        grid_search_pls_da.fit(X_tr, y_tr)                                                 # fit the grid search
+        best_model = grid_search_pls_da.best_estimator_                                    # store the best model
 
-        probs = best_model.predict_proba(X_val)[:, 1]
+        probs = best_model.predict_proba(X_val)[:, 1]                                      # predicht the probabilities
 
-        fpr, tpr, _ = roc_curve(y_val, probs)
-        tpr_interp = np.interp(mean_fpr, fpr, tpr)
-        tpr_interp[0] = 0.0
+        fpr, tpr, _ = roc_curve(y_val, probs)                                              # calculate the roc curve
+        tpr_interp = np.interp(mean_fpr, fpr, tpr)                                         # interpolate the TPR valies onto the common FPR axis
+        tpr_interp[0] = 0.0                                                                # force to ROC curve to start at 0
 
-        tprs.append(tpr_interp)
-        aucs.append(auc(fpr, tpr))
+        tprs.append(tpr_interp)                                                            # store the interpoled TPR curve 
+        aucs.append(auc(fpr, tpr))                                                         # store the AUC values
 
-    mean_tpr = np.mean(tprs, axis=0)
-    std_tpr = np.std(tprs, axis=0)
-    mean_auc = np.mean(aucs)
-    std_auc = np.std(aucs)
+    mean_tpr = np.mean(tprs, axis=0)                                                       # calculate the mean of the true positive rate
+    std_tpr = np.std(tprs, axis=0)                                                         # calculate the std of true positive rate
+    mean_auc = np.mean(aucs)                                                               # calculate the mean of the auc
+    std_auc = np.std(aucs)                                                                 # calculate the std of the auc
 
     final_grid_search_pls_da = GridSearchCV(                                               # search the best parameters combination
         pipeline_pls_da,                                                                   # for this model
@@ -228,7 +234,7 @@ def main():                                                                     
     AUC_plot_and_confusion_matrix(y_validate, probabilities_pls_da[:,1],                   # plot the ROC-AUC curve and confusion matrix
                                    y_validate, y_pred_pls_da,                              # use true matrix labels and predicted labels
                                    "PLS DA model")                                         # set the title of the plot
-    ROC_STD_plot(mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr, "PLS DA model")
+    ROC_STD_plot(mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr, "PLS DA model")           # plot the ROC STD 
 
     #--------------------------------------------------------------
     # Pipeline Support Vector Machine
@@ -270,32 +276,35 @@ def main():                                                                     
         'classifier__C': [0.0001, 0.001, 0.01, 1, 5, 10, 100, 1000],                       # test different regularization strengths
         'classifier__gamma':['auto', 'scale', 0.0001, 0.001, 0.01, 1, 10, 100, 1000]}      # test different gamma values, which control how far the influence of one sample reaches
 
-    tprs = []
-    aucs = []
-    mean_fpr = np.linspace(0, 1, 100)
+    tprs = []                                                                              # make a empty variable to store the true positive rate curves
+    aucs = []                                                                              # make a empty variable to store the auc values
+    mean_fpr = np.linspace(0, 1, 100)                                                      # create 100 evenly spaced FPR values to use as a common x-axis for averaging ROC curves across folds
 
-    for train_idx, val_idx in outer_cv.split(X_train,y_train):
-        X_tr, X_val = X_train.iloc[train_idx], X_train.iloc[val_idx]
-        y_tr, y_val = y_train.iloc[train_idx], y_train.iloc[val_idx]
+    for train_idx, val_idx in outer_cv.split(X_train,y_train):                             # loop through the outer cross-validation folds
+        X_tr, X_val = X_train.iloc[train_idx], X_train.iloc[val_idx]                       # split the training data into 2 sets
+        y_tr, y_val = y_train.iloc[train_idx], y_train.iloc[val_idx]                       # split the label data into 2 sets
 
-        grid_search_SVM = GridSearchCV(pipeline_SVM, param_grid_SVM,
-                                       cv=inner_cv, scoring=scoring, refit = True, n_jobs=-1)
-        grid_search_SVM.fit(X_tr, y_tr)
-        best_model = grid_search_SVM.best_estimator_
+        grid_search_SVM = GridSearchCV(pipeline_SVM, param_grid_SVM,                       # preform the grid search
+                                       cv=inner_cv,                                        # use the previously defined inner cross-validation folds
+                                       scoring=scoring,                                    # scoring is based on the earlier defines variable: ROC-AUC
+                                       refit = True,                                       # retrain the best model on the full training set
+                                       n_jobs=-1)                                          # use all available CPU cores
+        grid_search_SVM.fit(X_tr, y_tr)                                                    # fit the grid search
+        best_model = grid_search_SVM.best_estimator_                                       # store the best model
 
-        probs = best_model.predict_proba(X_val)[:, 1]
+        probs = best_model.predict_proba(X_val)[:, 1]                                      # predict the probabilities with the best model
 
-        fpr, tpr, _ = roc_curve(y_val, probs)
-        tpr_interp = np.interp(mean_fpr, fpr, tpr)
-        tpr_interp[0] = 0.0
+        fpr, tpr, _ = roc_curve(y_val, probs)                                              # calculate the roc curve
+        tpr_interp = np.interp(mean_fpr, fpr, tpr)                                         # interpolate the TPR valies onto the common FPR axis
+        tpr_interp[0] = 0.0                                                                # force to ROC curve to start at 0
 
-        tprs.append(tpr_interp)
-        aucs.append(auc(fpr, tpr))
+        tprs.append(tpr_interp)                                                            # store the interpoled TPR curve 
+        aucs.append(auc(fpr, tpr))                                                         # store the AUC values
 
-    mean_tpr = np.mean(tprs, axis=0)
-    std_tpr = np.std(tprs, axis=0)
-    mean_auc = np.mean(aucs)
-    std_auc = np.std(aucs)
+    mean_tpr = np.mean(tprs, axis=0)                                                       # calculate the mean of the true positive rate
+    std_tpr = np.std(tprs, axis=0)                                                         # calculate the std of true positive rate
+    mean_auc = np.mean(aucs)                                                               # calculate the mean of the auc
+    std_auc = np.std(aucs)                                                                 # calculate the std of the auc
 
     final_grid_search_SVM = GridSearchCV(                                                  # search the best parameters combination
         pipeline_SVM,                                                                      # for this model
@@ -317,7 +326,7 @@ def main():                                                                     
     AUC_plot_and_confusion_matrix(y_validate, probabilities_SVM[:,1],                      # plot the ROC-AUC curve and confusion matrix
                                   y_validate, y_pred_SVM,                                  # use true matrix labels and predicted labels
                                   "Support vector machine")                                # set the title of the plot
-    ROC_STD_plot(mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr, "Support vector machine")
+    ROC_STD_plot(mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr, "Support vector machine") # plot the ROC STD 
 
     #--------------------------------------------------------------
     # Pipeline Gradient Boosting
@@ -336,34 +345,37 @@ def main():                                                                     
     'classifier__subsample': [0.8, 1.0],                                                   # test different fractions of training samples used per tree
     'classifier__colsample_bytree': [0.8, 1.0]}                                            # test different fractions of features used per tree
 
-    tprs = []
-    aucs = []
-    mean_fpr = np.linspace(0, 1, 100)
+    tprs = []                                                                              # make a empty variable to store the true positive rate curves
+    aucs = []                                                                              # make a empty variable to store the auc values
+    mean_fpr = np.linspace(0, 1, 100)                                                      # create 100 evenly spaced FPR values to use as a common x-axis for averaging ROC curves across folds
 
-    for train_idx, val_idx in outer_cv.split(X_train,y_train):
-        X_tr, X_val = X_train.iloc[train_idx], X_train.iloc[val_idx]
-        y_tr, y_val = y_train.iloc[train_idx], y_train.iloc[val_idx]
+    for train_idx, val_idx in outer_cv.split(X_train,y_train):                             # loop through the outer cross-validation folds
+        X_tr, X_val = X_train.iloc[train_idx], X_train.iloc[val_idx]                       # split the training data into 2 sets
+        y_tr, y_val = y_train.iloc[train_idx], y_train.iloc[val_idx]                       # split the label data into 2 sets
 
-        grid_search_XGB = GridSearchCV(pipeline_XGB, param_grid_XGB,
-                                        cv=inner_cv, scoring=scoring, refit = True, n_jobs=-1)
-        grid_search_XGB.fit(X_tr, y_tr)
-        best_model = grid_search_XGB.best_estimator_
+        grid_search_XGB = GridSearchCV(pipeline_XGB, param_grid_XGB,                       # preform the grid search
+                                        cv=inner_cv,                                       # use the previously defined inner cross-validation folds
+                                        scoring=scoring,                                   # scoring is based on the earlier defines variable: ROC-AUC
+                                        refit = True,                                      # retrain the best model on the full training set
+                                        n_jobs=-1)                                         # use all available CPU cores
+        grid_search_XGB.fit(X_tr, y_tr)                                                    # fit the grid search
+        best_model = grid_search_XGB.best_estimator_                                       # store the best model
 
-        probs = best_model.predict_proba(X_val)[:, 1]
+        probs = best_model.predict_proba(X_val)[:, 1]                                      # predict the probabilities with the best model
 
-        fpr, tpr, _ = roc_curve(y_val, probs)
-        tpr_interp = np.interp(mean_fpr, fpr, tpr)
-        tpr_interp[0] = 0.0
+        fpr, tpr, _ = roc_curve(y_val, probs)                                              # calculate the roc curve
+        tpr_interp = np.interp(mean_fpr, fpr, tpr)                                         # interpolate the TPR valies onto the common FPR axis
+        tpr_interp[0] = 0.0                                                                # force to ROC curve to start at 0
 
-        tprs.append(tpr_interp)
-        aucs.append(auc(fpr, tpr))
+        tprs.append(tpr_interp)                                                            # store the interpoled TPR curve 
+        aucs.append(auc(fpr, tpr))                                                         # store the AUC values
 
-    mean_tpr = np.mean(tprs, axis=0)
-    std_tpr = np.std(tprs, axis=0)
-    mean_auc = np.mean(aucs)
-    std_auc = np.std(aucs)
+    mean_tpr = np.mean(tprs, axis=0)                                                       # calculate the mean of the true positive rate
+    std_tpr = np.std(tprs, axis=0)                                                         # calculate the std of true positive rate
+    mean_auc = np.mean(aucs)                                                               # calculate the mean of the auc
+    std_auc = np.std(aucs)                                                                 # calculate the std of the auc
 
-    final_grid_search_XGB = GridSearchCV(                                                 # search the best parameters combination
+    final_grid_search_XGB = GridSearchCV(                                                  # search the best parameters combination
         pipeline_XGB,                                                                      # for this model
         param_grid_XGB,                                                                    # with these parameters as option
         cv=inner_cv,                                                                       # same as earlier defines variable: stratified K fold cross-validation
@@ -371,19 +383,19 @@ def main():                                                                     
         refit = True,                                                                      # retrain the best model on the full training set
         n_jobs=-1)                                                                         # use all avaiable CPU cores
 
-    final_grid_search_XGB.fit(X_train, y_train)                                           # fit the grid search on the training data
-    classifier_XGB = final_grid_search_XGB.best_estimator_                                # store the best model
+    final_grid_search_XGB.fit(X_train, y_train)                                            # fit the grid search on the training data
+    classifier_XGB = final_grid_search_XGB.best_estimator_                                 # store the best model
 
     y_pred_XGB = classifier_XGB.predict(X_validate)                                        # predict the class labels for the validation set
     probabilities_XGB = classifier_XGB.predict_proba(X_validate)[:, 1]                     # predict the probabilities for the positive classes
 
-    print('Best parameters found:\n', final_grid_search_XGB.best_params_)                 # print the best parameter combination
+    print('Best parameters found:\n', final_grid_search_XGB.best_params_)                  # print the best parameter combination
     print(f"CL Report of XGB:\n", classification_report(                                   # print the classification metrics
         y_validate, y_pred_XGB, zero_division='warn'))                                     # compare true and predicted labels
     AUC_plot_and_confusion_matrix(y_validate, probabilities_XGB[:,1],                      # plot the ROC-AUC curve and confusion matrix
                                   y_validate, y_pred_XGB,                                  # use true matrix labels and predicted labels
                                   "XGBoost model")                                         # set the title of the plot
-    ROC_STD_plot(mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr, "XGBoost model")
+    ROC_STD_plot(mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr, "XGBoost model")          # plot the ROC STD 
 
     return X_train, classifier_LR, classifier_PLS_DA, classifier_SVM, classifier_XGB       # end the definition and give back these data and models
 
