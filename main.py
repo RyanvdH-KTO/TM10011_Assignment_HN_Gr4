@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import xgboost as xgb
 from sklearn.svm import SVC
-from sklearn.pipeline import Pipeline
+from sklearn.pipeline import FunctionTransformer, Pipeline
 from sklearn.feature_selection import RFE
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import classification_report
@@ -64,17 +64,17 @@ def main():
                         ])
 
     param_grid_regression = [{
-        'selector': [RFE(LogisticRegression(max_iter=1000, random_state=42), n_features_to_select=15), 
-                    SFS(LogisticRegression(max_iter=1000, random_state=42), n_features_to_select="auto", direction="forward", scoring=scoring, cv=kf, n_jobs=-1, tol=1e-3),
-                    SFS(LogisticRegression(max_iter=1000, random_state=42), n_features_to_select="auto", direction="backward", scoring=scoring, cv=kf, n_jobs=-1, tol=1e-3)],
+        'selector': [RFE(LogisticRegression(max_iter=1000, random_state=42), n_features_to_select=25), 
+                    SFS(LogisticRegression(max_iter=1000, random_state=42), n_features_to_select="auto", direction="forward", scoring=scoring, cv=3, n_jobs=1),
+                    SFS(LogisticRegression(max_iter=1000, random_state=42), n_features_to_select="auto", direction="backward", scoring=scoring, cv=3, n_jobs=1)],
         'classifier__C': [0.001, 0.01, 0.1, 1, 10],
         'classifier__penalty': ['l1', 'l2'],
         'classifier__solver': ['liblinear']
     },
     {
-        'selector': [RFE(LogisticRegression(max_iter=1000, random_state=42), n_features_to_select=15), 
-                    SFS(LogisticRegression(max_iter=1000, random_state=42), n_features_to_select="auto", direction="forward", scoring=scoring, cv=kf, n_jobs=-1, tol=1e-3),
-                    SFS(LogisticRegression(max_iter=1000, random_state=42), n_features_to_select="auto", direction="backward", scoring=scoring, cv=kf, n_jobs=-1, tol=1e-3)], 
+        'selector': [RFE(LogisticRegression(max_iter=1000, random_state=42), n_features_to_select=25), 
+                    SFS(LogisticRegression(max_iter=1000, random_state=42), n_features_to_select="auto", direction="forward", scoring=scoring, cv=3, n_jobs=1),
+                    SFS(LogisticRegression(max_iter=1000, random_state=42), n_features_to_select="auto", direction="backward", scoring=scoring, cv=3, n_jobs=1)], 
         'classifier__C': [0.001, 0.01, 0.1, 1, 10],
         'classifier__penalty': ['elasticnet'],
         'classifier__solver': ['saga']
@@ -96,14 +96,28 @@ def main():
 
     #--------------------------------------------------------------
     # Pipeline PLS-DA
+    def squeeze_output(X):
+        if isinstance(X, tuple):
+            X = X[0]
+        return X.reshape(X.shape[0], -1)
     pipeline_pls_da = Pipeline([
         ('scaler', MinMaxScaler()),
         ('covariance_filter', DropCorrelatedFeatures(threshold=0.95)),
-        ('classifier', PLSRegression(n_components=10, random_state=42))
+        ('pls', PLSRegression(n_components=10, scale=False, max_iter=1000)),
+        ('squeeze', FunctionTransformer(squeeze_output)),
+        ('classifier', LogisticRegression(
+                        penalty='elasticnet',
+                        solver='saga',
+                        class_weight='balanced',
+                        l1_ratio=0.85,
+                        random_state=42,
+                        max_iter=1000
+                        ))
                         ])
 
     param_grid_pls_da = {
-        'classifier__n_components': [5, 10, 15]
+        'pls__n_components': [5, 10, 15],
+        'classifier__C': [0.001, 0.01, 0.1, 1, 10]
     }
 
     grid_search_pls_da = GridSearchCV(pipeline_pls_da, param_grid_pls_da, 
@@ -122,10 +136,10 @@ def main():
 
     #--------------------------------------------------------------
     # Pipeline Support Vector Machine
-    print('\n Start SVM pipeline', flush=True)
     pipeline_SVM = Pipeline(steps=[
         ('scaler', MinMaxScaler()),
         ('covariance_filter', DropCorrelatedFeatures(threshold=0.95)),
+        ('selector', SFS),
         ('classifier', SVC(
                         random_state=42, 
                         max_iter=10000, 
@@ -138,8 +152,8 @@ def main():
     
     param_grid_SVM = {
         'selector': [RFE(SVC(kernel='linear', max_iter=1000, random_state=42), n_features_to_select=15), 
-                    SFS(SVC(max_iter=1000, random_state=42), n_features_to_select="auto", direction="forward", scoring=scoring, cv=kf, n_jobs=-1, tol=1e-3),
-                    SFS(SVC(max_iter=1000, random_state=42), n_features_to_select="auto", direction="backward", scoring=scoring, cv=kf, n_jobs=-1, tol=1e-3)],
+                    SFS(SVC(max_iter=1000, random_state=42), n_features_to_select="auto", direction="forward", scoring=scoring, cv=3, n_jobs=1),
+                    SFS(SVC(max_iter=1000, random_state=42), n_features_to_select="auto", direction="backward", scoring=scoring, cv=3, n_jobs=1)],
         'classifier__kernel': ['linear', 'poly', 'rbf', 'sigmoid'],
         'classifier__C': [0.0001, 0.001, 0.01, 1, 5, 10, 100, 1000],
         'classifier__gamma':['auto', 'scale', 0.0001, 0.001, 0.01, 1, 10, 100, 1000]
@@ -185,19 +199,19 @@ def main():
     classifier_XGB = grid_search_XGB.best_estimator_ 
 
     y_pred_XGB = classifier_XGB.predict(X_validate)  
-    probabilities_XGB = classifier_XGB.predict_proba(X_validate)[:, 1]
+    probabilities_XGB = classifier_XGB.predict_proba(X_validate)
 
     print('Best parameters found:\n', grid_search_XGB.best_params_)
     print("Beste score:", grid_search_XGB.best_score_)
     print(f"CL Report of XGB:\n", classification_report(y_validate, y_pred_XGB, zero_division='warn'))
     AUC_plot_and_confusion_matrix(y_validate, probabilities_XGB[:,1], y_validate, y_pred_XGB, "XGBoost model")
 
-    return X_train, classifier_LR, classifier_PLS_DA, classifier_SVM, classifier_XGB, LR_selector, SVM_selector
+    return X_train, classifier_LR, classifier_PLS_DA, classifier_SVM, classifier_XGB
 
 #%% Run model
 # Run model
 if __name__ == "__main__":
-    X_train, classifier_LR, classifier_PLS_DA, classifier_SVM, classifier_XGB, LR_selector, SVM_selector = main()
+    X_train, classifier_LR, classifier_PLS_DA, classifier_SVM, classifier_XGB = main()
 #%% Test with Test Data
 # Load Test Data
 test_data = pd.read_csv('hn/Test_data.csv', index_col=0)
@@ -208,18 +222,14 @@ print(test_data['label'].value_counts())
 # Preprocessing
 check_missing_values(test_data)
 X_test, y_test = split_features_target(test_data)
-X_test_selected_LR = X_test[:, LR_selector]
-X_test_selected_SVM = X_test[:, SVM_selector]
 
 print("Test shape:", X_test.shape)
-print("Test LR shape", X_test_selected_LR.shape)
-print("Test SVM shape", X_test_selected_SVM.shape)
 print("Label distribution training set:\n", y_test.value_counts())
 
 #%%
 # LR test
-y_pred_regression = classifier_LR.predict(X_test_selected_LR)
-probabilities_regression = classifier_LR.predict_proba(X_test_selected_LR)[:, 1]
+y_pred_regression = classifier_LR.predict(X_test)
+probabilities_regression = classifier_LR.predict_proba(X_test)
 print(y_pred_regression.shape)
 print(f"CL Report of LR:\n", classification_report(y_test, y_pred_regression, zero_division='warn'))
 AUC_plot_and_confusion_matrix(y_test, probabilities_regression, y_test, y_pred_regression, "Logistic regression model", test=True)
@@ -232,17 +242,15 @@ print(f"CL Report of PLS-DA:\n", classification_report(y_test, y_pred_pls_da, ze
 AUC_plot_and_confusion_matrix(y_test, probabilities_pls_da[:,1], y_test, y_pred_pls_da, "PLS DA model", test=True)
 
 # SVM test
-y_pred_SVM = classifier_SVM.predict(X_test_selected_SVM) 
-probabilities_SVM = classifier_SVM.predict_proba(X_test_selected_SVM)
+y_pred_SVM = classifier_SVM.predict(X_test) 
+probabilities_SVM = classifier_SVM.predict_proba(X_test)
 
 print(f"CL Report of SVM:\n", classification_report(y_test, y_pred_SVM, zero_division='warn'))
-AUC_plot_and_confusion_matrix(y_test, probabilities_SVM[:,1], y_test, y_pred_SVM, "Support vector machine", test=True)
+AUC_plot_and_confusion_matrix(y_test, probabilities_SVM, y_test, y_pred_SVM, "Support vector machine", test=True)
     
 # XGB test
 y_pred_XGB = classifier_XGB.predict(X_test)  
-propabilities_XGB = classifier_XGB.predict_proba(X_test)[:, 1]
-if propabilities_XGB.ndim == 1:
-    propabilities_XGB = np.column_stack([1 - propabilities_XGB, propabilities_XGB])
+propabilities_XGB = classifier_XGB.predict_proba(X_test)
 
 print(f"CL Report of XGB:\n", classification_report(y_test, y_pred_XGB, zero_division='warn'))
 AUC_plot_and_confusion_matrix(y_test, propabilities_XGB[:,1], y_test, y_pred_XGB, "XGBoost model", test=True)
