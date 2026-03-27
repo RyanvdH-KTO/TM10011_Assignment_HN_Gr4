@@ -68,16 +68,16 @@ def main():                                                                     
                                             n_features_to_select="auto",                   # automatically determine the optimal number of features to keep
                                             direction="forward",                           # add the feature one by one till performance doesn't improve
                                             scoring=scoring,                               # scoring is based on the earlier defines variable: ROC-AUC
-                                            cv=0,                                                       # same as earlier defines variable: stratified K fold cross-validation
-                                            n_jobs=1),                                                   # use all avaiable CPU cores
+                                            cv=0,                                          # this is the cross-validation in the selector
+                                            n_jobs=1),                                     # use 1 CPU core, so it runs faster
                     SFS(LogisticRegression(                                                # SFS backward as feature selector option 
                                             max_iter=1000,                                 # define max iterations
                                             random_state=42),                              # same seed for reproducibility
                                             n_features_to_select="auto",                   # automatically determine the optimal number of features to keep
                                             direction="backward",                          # remove a feature one by one till performance worsen beyond a threshold
                                             scoring=scoring,                               # scoring is based on the earlier defines variable: ROC-AUC
-                                            cv=0,                                                   # same as earlier defines variable: stratified K fold cross-validation
-                                            n_jobs=1)],                                                 # use all avaiable CPU cores
+                                            cv=0,                                          # this is the cross-validation in the selector
+                                            n_jobs=1)],                                    # use 1 CPU core, so it runs faster
         'classifier__C': [0.001, 0.01, 0.1, 1, 10],                                        # test different regularization strengths
         'classifier__penalty': ['l1', 'l2'],                                               # test L1 and L2 regularization as penalty
         'classifier__solver': ['liblinear']                                                # use liblinear as solver
@@ -92,16 +92,16 @@ def main():                                                                     
                                             n_features_to_select="auto",                   # automatically determine the optimal number of features to keep
                                             direction="forward",                           # add the feature one by one till performance doesn't improve
                                             scoring=scoring,                               # scoring is based on the earlier defines variable: ROC-AUC
-                                            cv=0,                                                   # same as earlier defines variable: stratified K fold cross-validation
-                                            n_jobs=1),                                              # use all avaiable CPU cores
+                                            cv=0,                                          # this is the cross-validation in the selector
+                                            n_jobs=1),                                     # use 1 CPU core, so it runs faster
                     SFS(LogisticRegression(                                                # SFS backward as feature selector option 
                                             max_iter=1000,                                 # define max iterations
                                             random_state=42),                              # same seed for reproducibility
                                             n_features_to_select="auto",                   # automatically determine the optimal number of features to keep
                                             direction="backward",                          # remove a feature one by one till performance worsen beyond a threshold
                                             scoring=scoring,                               # scoring is based on the earlier defines variable: ROC-AUC
-                                            cv=0,                                              # same as earlier defines variable: stratified K fold cross-validation
-                                            n_jobs=1)],                                         # use all avaiable CPU cores
+                                            cv=0,                                          # this is the cross-validation in the selector
+                                            n_jobs=1)],                                    # use 1 CPU core, so it runs faster
 
         'classifier__C': [0.001, 0.01, 0.1, 1, 10],                                        # test different regularization strengths
         'classifier__penalty': ['elasticnet'],                                             # use elasticnet als penalty
@@ -175,29 +175,31 @@ def main():                                                                     
                                   y_validate, y_pred_regression,                           # use true matrix labels and predicted labels
                                   "Logistic regression model")                             # set the title of the plot
 
-    #--------------------------------------------------------------
-    # Pipeline PLS-DA
-    def squeeze_output(X):
-        if isinstance(X, tuple):
-            X = X[0]
-        return X.reshape(X.shape[0], -1)
+    # Pipeline PLS-DA --------------------------------------------------------------------
+    def squeeze_output(X):                                                                 # define a definition
+        if isinstance(X, tuple):                                                           # if the output is a tuple
+            X = X[0]                                                                       # if correct, than only keep the feature array
+        return X.reshape(X.shape[0], -1)                                                   # reshape the output into a 2D array with samples as rows
+    
     pipeline_pls_da = Pipeline([                                                           # define the pipeline
         ('scaler', MinMaxScaler()),                                                        # scale features by minmaxscaler method
         ('covariance_filter', DropCorrelatedFeatures(threshold=0.95)),                     # filter for covariance, drop features which are correlated higher than 0.95
-        ('pls', PLSRegression(n_components=10, scale=False, max_iter=1000)),
-        ('squeeze', FunctionTransformer(squeeze_output)),
-        ('classifier', LogisticRegression(
-                        penalty='elasticnet',
-                        solver='saga',
-                        class_weight='balanced',
-                        l1_ratio=0.85,
-                        random_state=42,
-                        max_iter=1000))])
+        ('pls', PLSRegression(                                                             # transform the data into a smaller set of latent PLS components
+            n_components=10,                                                               # use 10 components to summarize the most relevant information
+            scale=False,                                                                   # disable internal scaling because scaling is already done earlier
+            max_iter=1000)),                                                               # define max iterations
+        ('squeeze', FunctionTransformer(squeeze_output)),                                  # reshape the PLS output into the correct 2D format for the classifier
+        ('classifier', LogisticRegression(                                                 # define the final Logistic Regression classifier
+                        penalty='elasticnet',                                              # use elasticnet penalty
+                        solver='saga',                                                     # use the solver that supports Elastic Net regularization
+                        class_weight='balanced',                                           # automatically give more weight to the minority class
+                        l1_ratio=0.85,                                                     # set the balance between L1 and L2 regularization
+                        random_state=42,                                                   # same seed for reproducibility
+                        max_iter=1000))])                                                  # define max iterations
 
     param_grid_pls_da = {                                                                  # define the grid-parameter
         'pls__n_components': [5, 10, 15],                                                  # test different numbers of PLS components
-        'classifier__C': [0.001, 0.01, 0.1, 1, 10]                                         # test different regularization strengths
-    }
+        'classifier__C': [0.001, 0.01, 0.1, 1, 10]}                                        # test different regularization strengths
 
     grid_search_pls_da = GridSearchCV(                                                     # search the best parameters combination
         pipeline_pls_da,                                                                   # for this model
@@ -246,16 +248,16 @@ def main():                                                                     
                             n_features_to_select="auto",                                   # automatically determine the optimal number of features to keep
                             direction="forward",                                           # add the feature one by one till it doesn't improve
                             scoring=scoring,                                               # scoring is based on the earlier defines variable: ROC-AUC
-                            cv=0,                                                                    # same as earlier defines variable: stratified K fold cross-validation
-                            n_jobs=1),                                                               # use all avaiable CPU cores
+                            cv=0,                                                          # this is the cross-validation in the selector
+                            n_jobs=1),                                                     # use 1 CPU core, so it runs faster
                     SFS(SVC(                                                               # SFS backward as feature selector option 
                             max_iter=1000,                                                 # define max iterations
                             random_state=42),                                              # same seed for reproducibility
                             n_features_to_select="auto",                                   # automatically determine the optimal number of features to keep
                             direction="backward",                                          # remove a feature one by one till performance worsen beyond a threshold
                             scoring=scoring,                                               # scoring is based on the earlier defines variable: ROC-AUC
-                            cv=0,                                                                    # same as earlier defines variable: stratified K fold cross-validation
-                            n_jobs=1)],                                                               # use all avaiable CPU cores
+                            cv=0,                                                          # this is the cross-validation in the selector
+                            n_jobs=1)],                                                    # use 1 CPU core, so it runs faster
         'classifier__kernel': ['linear', 'poly', 'rbf', 'sigmoid'],                        # test different kernel functions to learn linear or non-linear decision boundaries
         'classifier__C': [0.0001, 0.001, 0.01, 1, 5, 10, 100, 1000],                       # test different regularization strengths
         'classifier__gamma':['auto', 'scale', 0.0001, 0.001, 0.01, 1, 10, 100, 1000]}      # test different gamma values, which control how far the influence of one sample reaches
@@ -271,8 +273,8 @@ def main():                                                                     
     grid_search_SVM.fit(X_train, y_train)                                                  # fit the grid search on the training data
     classifier_SVM = grid_search_SVM.best_estimator_                                       # store the best model
 
-    y_pred_XGB = classifier_XGB.predict(X_validate)  
-    probabilities_XGB = classifier_XGB.predict_proba(X_validate)
+    y_pred_XGB = classifier_XGB.predict(X_validate)                                        # predict the labels
+    probabilities_XGB = classifier_XGB.predict_proba(X_validate)                           # predict the probabilities cN XGBoost
     y_pred_SVM = classifier_SVM.predict(X_validate)                                        # predicht the class labels for the validation set
     probabilities_SVM = classifier_SVM.predict_proba(X_validate)                           # predicht the probabilities for the positive classes
 
@@ -327,7 +329,7 @@ def main():                                                                     
 
 #%% Run model
 if __name__ == "__main__":                                                                 # run this code only when the script is executed directly
-    X_train, classifier_LR, classifier_PLS_DA, classifier_SVM, classifier_XGB, LR_selector, SVM_selector = main() # run the main function and store the trained models and selected features
+    X_train, classifier_LR, classifier_PLS_DA, classifier_SVM, classifier_XGB, LR_selector, SVM_selector = main()  # run the main function and store the trained models and selected features
 
 #%% Test with Test Data
 test_data = pd.read_csv('hn/Test_data.csv', index_col=0)                                   # load the test data by reading the CSV
@@ -342,8 +344,8 @@ print("Test shape:", X_test.shape)                                              
 print("Label distribution training set:\n", y_test.value_counts())                         # print the class distribution of the test target labels
 
 #%% LR test
-y_pred_regression = classifier_LR.predict(X_test)                              # predict de labels
-probabilities_regression = classifier_LR.predict_proba(X_test)[:, 1]           # predict the probabilities
+y_pred_regression = classifier_LR.predict(X_test)                                          # predict de labels
+probabilities_regression = classifier_LR.predict_proba(X_test)[:, 1]                       # predict the probabilities
 print(y_pred_regression.shape)                                                             # print the shape of the predicted labels
 print(f"CL Report of LR:\n", classification_report(y_test, y_pred_regression, zero_division='warn'))      # print the classification metrics
 AUC_plot_and_confusion_matrix(y_test, probabilities_regression,                            # plot the ROC-AUC curve and cofusion matrix
