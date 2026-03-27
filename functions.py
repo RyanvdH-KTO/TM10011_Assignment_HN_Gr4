@@ -3,12 +3,8 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
-from sklearn.feature_selection import RFE
-from sklearn.pipeline import FunctionTransformer
-from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import roc_curve, auc, confusion_matrix 
-from sklearn.feature_selection import SequentialFeatureSelector
-from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score 
 
 # Missing data functie
 def check_missing_values(data):
@@ -54,44 +50,71 @@ def plot_correlation_matrix(X_train, to_drop, feature_names=None):
     plt.savefig("correlation_matrix.png", dpi=150, bbox_inches="tight")
     plt.show()
 
-# Plot AUC-curve & confusion matrix
+def summarize(arr):
+    arr = np.array(arr)
+    return arr.mean(), np.percentile(arr, 2.5), np.percentile(arr, 97.5)         
 
-def AUC_plot_and_confusion_matrix(labels, probs, y_test, y_pred, model, test=False):
-    # info
-    fpr = dict()
-    tpr = dict()
-    roc_auc = dict()
-    fpr, tpr, _ = roc_curve(labels.values.ravel(), probs.ravel())
-    roc_auc = auc(fpr, tpr)
+def Bootstrap_calculation(y_test, probabilities, y_pred):
+    n_bootstrap = 5000
+    rng = np.random.default_rng(42)
+
+    tprs = []
+    aucs = []
+    accs = []
+    precs = []
+    recs = []
+    f1s = []
+    mean_fpr = np.linspace(0, 1, 100)
+
+    y_true = y_test.values
+
+    for _ in range(n_bootstrap):
+        # sample with replacement
+        indices = rng.integers(0, len(y_true), len(y_true))
+        
+        y_sample = y_true[indices]
+        prob_sample = probabilities[indices]
+        pred_sample = y_pred[indices]
+
+        if len(np.unique(y_sample)) < 2:
+            continue
+
+        fpr, tpr, _ = roc_curve(y_sample, prob_sample)
+        
+        tpr_interp = np.interp(mean_fpr, fpr, tpr)
+        tpr_interp[0] = 0.0
+
+        tprs.append(tpr_interp)
+        aucs.append(auc(fpr, tpr))
+        accs.append(accuracy_score(y_sample, pred_sample))
+        precs.append(precision_score(y_sample, pred_sample, zero_division=0))
+        recs.append(recall_score(y_sample, pred_sample, zero_division=0))
+        f1s.append(f1_score(y_sample, pred_sample, zero_division=0))
+
+    # Aggregate
+    mean_tpr = np.mean(tprs, axis=0)
+    std_tpr = np.std(tprs, axis=0)
+
+    mean_auc = np.mean(aucs)
+    std_auc = np.std(aucs)
+
+    # 95% CI for AUC
+    ci_lower = np.percentile(aucs, 2.5)
+    ci_upper = np.percentile(aucs, 97.5)
+
+    acc_mean, acc_lo, acc_hi = summarize(accs)
+    prec_mean, prec_lo, prec_hi = summarize(precs)
+    rec_mean, rec_lo, rec_hi = summarize(recs)
+    f1_mean, f1_lo, f1_hi = summarize(f1s)
+
+    print(f"AUC: {mean_auc:.3f} (95% CI: {ci_lower:.3f} – {ci_upper:.3f})")
+    print("\nBootstrap Classification Metrics (95% CI):\n")
+    print(f"Accuracy  : {acc_mean:.3f} (95% CI: {acc_lo:.3f} – {acc_hi:.3f})")
+    print(f"Precision : {prec_mean:.3f} (95% CI: {prec_lo:.3f} – {prec_hi:.3f})")
+    print(f"Recall    : {rec_mean:.3f} (95% CI: {rec_lo:.3f} – {rec_hi:.3f})")
+    print(f"F1-score  : {f1_mean:.3f} (95% CI: {f1_lo:.3f} – {f1_hi:.3f})")
     
-    if test == True:
-        model = model + " with testset"
-
-    fig,(ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
-
-    ax1.plot(fpr, tpr, color='blue', linewidth=2.5, label=f'AUC: {roc_auc:.3f}', linestyle='solid')
-    ax1.plot([0, 1], [0, 1], color='grey', linestyle=(0, (5, 10)), label='Random prediction')
-    ax1.set_xlim([0.0, 1.0])
-    ax1.set_ylim([0.0, 1.05])
-    ax1.set_xlabel('False Positive Rate (FPR)', fontsize=12)
-    ax1.set_ylabel('True Positive Rate (TPR)', fontsize=12)
-    ax1.set_title(f'ROC Curve\n{model}', fontsize=14, fontweight='bold')
-    ax1.legend(fontsize=11)
-    ax1.grid()
-    
-    cm = confusion_matrix(y_test, y_pred)
-    sns.heatmap(cm, annot=True, cmap="Blues", fmt='d', ax=ax2,
-                xticklabels=['T12','T34'], 
-                yticklabels=['T12','T34'],
-                cbar_kws={'label': 'Count'})
-    ax2.set_title(f'Confusion Matrix\n{model}', fontsize=14, fontweight='bold')
-    ax2.set_xlabel('Predicted', fontsize=12)
-    ax2.set_ylabel('Actual', fontsize=12)
-    
-    plt.tight_layout()
-    plt.show()
-
-    return roc_auc
+    return mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr
 
 def ROC_STD_plot(mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr, model):
     plt.figure(figsize=(8,6))

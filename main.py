@@ -11,12 +11,11 @@ from sklearn.linear_model import LogisticRegression                             
 from sklearn.cross_decomposition import PLSRegression                                      # import package for partial least squares modeling
 from sklearn.preprocessing import FunctionTransformer                                      # import package for applying custom transformations in pipelines
 from sklearn.metrics import classification_report, roc_curve, auc                          # import package for evaluating classification models
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score        # import package for calculating classification metrics
 from feature_engine.selection import DropCorrelatedFeatures                                # import package for removing highly correlated features
 from sklearn.feature_selection import SequentialFeatureSelector as SFS                     # import package for sequential feature selection
 from sklearn.model_selection import train_test_split, StratifiedKFold, GridSearchCV        # import package for data splitting, cross-validation and grid search
 from functions import check_missing_values, split_features_target                          # import zelf gebouwde functie
-from functions import AUC_plot_and_confusion_matrix, ROC_STD_plot                          # import zelf gebouwde functie
+from functions import Bootstrap_calculation, ROC_STD_plot                                  # import zelf gebouwde functie
 
 #%% Load Data
 data = pd.read_csv('hn/Trainings_data.csv', index_col=0)                                   # read the csv with 
@@ -154,9 +153,6 @@ def main():                                                                     
     print('Best parameters found:\n', final_grid_search_regression.best_params_)           # print the best parameter combination
     print(f"CL Report of LR:\n", classification_report(                                    # print the classification metrics
         y_validate, y_pred_regression, zero_division='warn'))                              # compare true and predicted labels
-    AUC_plot_and_confusion_matrix(y_validate, probabilities_regression,                    # plot the ROC-AUC curve and confusion matrix
-                                  y_validate, y_pred_regression,                           # use true matrix labels and predicted labels
-                                  "Logistic regression model")                             # set the title of the plot
     ROC_STD_plot(mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr, "Logistic regression model") # plot the ROC STD 
     
     # Pipeline PLS-DA --------------------------------------------------------------------
@@ -232,9 +228,6 @@ def main():                                                                     
     print('Best parameters found:\n', final_grid_search_pls_da.best_params_)               # print the best parameter combination
     print(f"CL Report of PLS-DA:\n", classification_report(                                # print the classification metrics
         y_validate, y_pred_pls_da, zero_division='warn'))                                  # compare true and predicted labels
-    AUC_plot_and_confusion_matrix(y_validate, probabilities_pls_da[:,1],                   # plot the ROC-AUC curve and confusion matrix
-                                   y_validate, y_pred_pls_da,                              # use true matrix labels and predicted labels
-                                   "PLS DA model")                                         # set the title of the plot
     ROC_STD_plot(mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr, "PLS DA model")           # plot the ROC STD 
 
     #--------------------------------------------------------------
@@ -324,9 +317,6 @@ def main():                                                                     
     print('Best parameters found:\n', final_grid_search_SVM.best_params_)                  # print the best parameter combination
     print(f"CL Report of SVM:\n", classification_report(                                   # print the classification metrics
         y_validate, y_pred_SVM, zero_division='warn'))                                     # compare true and predicted labels
-    AUC_plot_and_confusion_matrix(y_validate, probabilities_SVM[:,1],                      # plot the ROC-AUC curve and confusion matrix
-                                  y_validate, y_pred_SVM,                                  # use true matrix labels and predicted labels
-                                  "Support vector machine")                                # set the title of the plot
     ROC_STD_plot(mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr, "Support vector machine") # plot the ROC STD 
 
     #--------------------------------------------------------------
@@ -393,9 +383,6 @@ def main():                                                                     
     print('Best parameters found:\n', final_grid_search_XGB.best_params_)                  # print the best parameter combination
     print(f"CL Report of XGB:\n", classification_report(                                   # print the classification metrics
         y_validate, y_pred_XGB, zero_division='warn'))                                     # compare true and predicted labels
-    AUC_plot_and_confusion_matrix(y_validate, probabilities_XGB,                      # plot the ROC-AUC curve and confusion matrix
-                                  y_validate, y_pred_XGB,                                  # use true matrix labels and predicted labels
-                                  "XGBoost model")                                         # set the title of the plot
     ROC_STD_plot(mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr, "XGBoost model")          # plot the ROC STD 
 
     return X_train, classifier_LR, classifier_PLS_DA, classifier_SVM, classifier_XGB       # end the definition and give back these data and models
@@ -413,267 +400,36 @@ print(test_data['label'].value_counts())                                        
 check_missing_values(test_data)                                                            # check for missing values
 X_test, y_test = split_features_target(test_data)                                          # split the test dataset into features and target labels
 
-def summarize(arr):
-    arr = np.array(arr)
-    return arr.mean(), np.percentile(arr, 2.5), np.percentile(arr, 97.5)                 # define k-fold for ROC
 #%% LR test
 y_pred_regression = classifier_LR.predict(X_test)                                          # predict de labels
 probabilities_regression = classifier_LR.predict_proba(X_test)[:, 1]                       # predict the probabilities
 
-n_bootstrap = 5000
-rng = np.random.default_rng(42)
-
-tprs = []
-aucs = []
-accs = []
-precs = []
-recs = []
-f1s = []
-mean_fpr = np.linspace(0, 1, 100)
-
-y_true = y_test.values
-
-for _ in range(n_bootstrap):
-    # sample with replacement
-    indices = rng.integers(0, len(y_true), len(y_true))
-    
-    y_sample = y_true[indices]
-    prob_sample = probabilities_regression[indices]
-    pred_sample = y_pred_regression[indices]
-
-    if len(np.unique(y_sample)) < 2:
-        continue
-    
-    fpr, tpr, _ = roc_curve(y_sample, prob_sample)
-    
-    tpr_interp = np.interp(mean_fpr, fpr, tpr)
-    tpr_interp[0] = 0.0
-
-    tprs.append(tpr_interp)
-    aucs.append(auc(fpr, tpr))
-    accs.append(accuracy_score(y_sample, pred_sample))
-    precs.append(precision_score(y_sample, pred_sample, zero_division=0))
-    recs.append(recall_score(y_sample, pred_sample, zero_division=0))
-    f1s.append(f1_score(y_sample, pred_sample, zero_division=0))
-
-# Aggregate
-mean_tpr = np.mean(tprs, axis=0)
-std_tpr = np.std(tprs, axis=0)
-
-mean_auc = np.mean(aucs)
-std_auc = np.std(aucs)
-
-# 95% CI for AUC
-ci_lower = np.percentile(aucs, 2.5)
-ci_upper = np.percentile(aucs, 97.5)
-
-acc_mean, acc_lo, acc_hi = summarize(accs)
-prec_mean, prec_lo, prec_hi = summarize(precs)
-rec_mean, rec_lo, rec_hi = summarize(recs)
-f1_mean, f1_lo, f1_hi = summarize(f1s)
-
-print(f"AUC: {mean_auc:.3f} (95% CI: {ci_lower:.3f} – {ci_upper:.3f})")
+mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr = Bootstrap_calculation(y_test, probabilities_regression, y_pred_regression)                 # calculate the confidence intervals for the AUC and classification metrics using bootstrapping
 print(f"CL Report of LR:\n", classification_report(y_test, y_pred_regression, zero_division='warn'))     # print the classification metrics
-print("\nBootstrap Classification Metrics (95% CI):\n")
-print(f"Accuracy  : {acc_mean:.3f} (95% CI: {acc_lo:.3f} – {acc_hi:.3f})")
-print(f"Precision : {prec_mean:.3f} (95% CI: {prec_lo:.3f} – {prec_hi:.3f})")
-print(f"Recall    : {rec_mean:.3f} (95% CI: {rec_lo:.3f} – {rec_hi:.3f})")
-print(f"F1-score  : {f1_mean:.3f} (95% CI: {f1_lo:.3f} – {f1_hi:.3f})")
 ROC_STD_plot(mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr, "Logistic regression model")
 
 # PLS-DA test
 y_pred_PLS_DA = classifier_PLS_DA.predict(X_test)                                          # predict the labels
 probabilities_PLS_DA = classifier_PLS_DA.predict_proba(X_test)[:, 1]                       # predict the probabilities
 
-n_bootstrap = 5000
-rng = np.random.default_rng(42)
-
-tprs = []
-aucs = []
-accs = []
-precs = []
-recs = []
-f1s = []
-mean_fpr = np.linspace(0, 1, 100)
-
-y_true = y_test.values
-
-for _ in range(n_bootstrap):
-    # sample with replacement
-    indices = rng.integers(0, len(y_true), len(y_true))
-    
-    y_sample = y_true[indices]
-    prob_sample = probabilities_PLS_DA[indices]
-    pred_sample = y_pred_PLS_DA[indices]
-
-    if len(np.unique(y_sample)) < 2:
-        continue
-    
-    fpr, tpr, _ = roc_curve(y_sample, prob_sample)
-    
-    tpr_interp = np.interp(mean_fpr, fpr, tpr)
-    tpr_interp[0] = 0.0
-
-    tprs.append(tpr_interp)
-    aucs.append(auc(fpr, tpr))
-    accs.append(accuracy_score(y_sample, pred_sample))
-    precs.append(precision_score(y_sample, pred_sample, zero_division=0))
-    recs.append(recall_score(y_sample, pred_sample, zero_division=0))
-    f1s.append(f1_score(y_sample, pred_sample, zero_division=0))
-
-# Aggregate
-mean_tpr = np.mean(tprs, axis=0)
-std_tpr = np.std(tprs, axis=0)
-
-mean_auc = np.mean(aucs)
-std_auc = np.std(aucs)
-
-# 95% CI for AUC
-ci_lower = np.percentile(aucs, 2.5)
-ci_upper = np.percentile(aucs, 97.5)
-
-acc_mean, acc_lo, acc_hi = summarize(accs)
-prec_mean, prec_lo, prec_hi = summarize(precs)
-rec_mean, rec_lo, rec_hi = summarize(recs)
-f1_mean, f1_lo, f1_hi = summarize(f1s)
-
-print(f"AUC: {mean_auc:.3f} (95% CI: {ci_lower:.3f} – {ci_upper:.3f})")
-print(f"CL Report of PLS-DA:\n", classification_report(y_test, y_pred_PLS_DA, zero_division='warn'))    # plot the ROC-AUC curve and confusion matrix
-print("\nBootstrap Classification Metrics (95% CI):\n")
-print(f"Accuracy  : {acc_mean:.3f} (95% CI: {acc_lo:.3f} – {acc_hi:.3f})")
-print(f"Precision : {prec_mean:.3f} (95% CI: {prec_lo:.3f} – {prec_hi:.3f})")
-print(f"Recall    : {rec_mean:.3f} (95% CI: {rec_lo:.3f} – {rec_hi:.3f})")
-print(f"F1-score  : {f1_mean:.3f} (95% CI: {f1_lo:.3f} – {f1_hi:.3f})")
+mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr = Bootstrap_calculation(y_test, probabilities_PLS_DA, y_pred_PLS_DA)                 # calculate the confidence intervals for the AUC and classification metrics using bootstrapping
+print(f"CL Report of PLS-DA:\n", classification_report(y_test, y_pred_PLS_DA, zero_division='warn'))     # print the classification metrics
 ROC_STD_plot(mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr, "PLS DA model")
 
 # SVM test
 y_pred_SVM = classifier_SVM.predict(X_test)                                                # predict the labels
 probabilities_SVM = classifier_SVM.predict_proba(X_test)[:, 1]                             # predict the probabilities
 
-n_bootstrap = 5000
-rng = np.random.default_rng(42)
-
-tprs = []
-aucs = []
-accs = []
-precs = []
-recs = []
-f1s = []
-mean_fpr = np.linspace(0, 1, 100)
-
-y_true = y_test.values
-
-for _ in range(n_bootstrap):
-    # sample with replacement
-    indices = rng.integers(0, len(y_true), len(y_true))
-    
-    y_sample = y_true[indices]
-    prob_sample = probabilities_SVM[indices]
-    pred_sample = y_pred_SVM[indices]
-
-    if len(np.unique(y_sample)) < 2:
-        continue
-    
-    fpr, tpr, _ = roc_curve(y_sample, prob_sample)
-    
-    tpr_interp = np.interp(mean_fpr, fpr, tpr)
-    tpr_interp[0] = 0.0
-
-    tprs.append(tpr_interp)
-    aucs.append(auc(fpr, tpr))
-    accs.append(accuracy_score(y_sample, pred_sample))
-    precs.append(precision_score(y_sample, pred_sample, zero_division=0))
-    recs.append(recall_score(y_sample, pred_sample, zero_division=0))
-    f1s.append(f1_score(y_sample, pred_sample, zero_division=0))
-
-# Aggregate
-mean_tpr = np.mean(tprs, axis=0)
-std_tpr = np.std(tprs, axis=0)
-
-mean_auc = np.mean(aucs)
-std_auc = np.std(aucs)
-
-# 95% CI for AUC
-ci_lower = np.percentile(aucs, 2.5)
-ci_upper = np.percentile(aucs, 97.5)
-
-acc_mean, acc_lo, acc_hi = summarize(accs)
-prec_mean, prec_lo, prec_hi = summarize(precs)
-rec_mean, rec_lo, rec_hi = summarize(recs)
-f1_mean, f1_lo, f1_hi = summarize(f1s)
-
-print(f"AUC: {mean_auc:.3f} (95% CI: {ci_lower:.3f} – {ci_upper:.3f})")
-print(f"CL Report of SVM:\n", classification_report(y_test, y_pred_SVM, zero_division='warn'))          # plot the ROC-AUC curve and confusion matrix
-print("\nBootstrap Classification Metrics (95% CI):\n")
-print(f"Accuracy  : {acc_mean:.3f} (95% CI: {acc_lo:.3f} – {acc_hi:.3f})")
-print(f"Precision : {prec_mean:.3f} (95% CI: {prec_lo:.3f} – {prec_hi:.3f})")
-print(f"Recall    : {rec_mean:.3f} (95% CI: {rec_lo:.3f} – {rec_hi:.3f})")
-print(f"F1-score  : {f1_mean:.3f} (95% CI: {f1_lo:.3f} – {f1_hi:.3f})")
+mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr = Bootstrap_calculation(y_test, probabilities_SVM, y_pred_SVM)                 # calculate the confidence intervals for the AUC and classification metrics using bootstrapping
+print(f"CL Report of SVM:\n", classification_report(y_test, y_pred_SVM, zero_division='warn'))     # print the classification metrics
 ROC_STD_plot(mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr, "Support vector machine")
 
 # XGB test
 y_pred_XGB = classifier_XGB.predict(X_test)                                                # predict the labels
 probabilities_XGB = classifier_XGB.predict_proba(X_test)[:, 1]                             # predict the probabilities
 
-n_bootstrap = 5000
-rng = np.random.default_rng(42)
-
-tprs = []
-aucs = []
-accs = []
-precs = []
-recs = []
-f1s = []
-mean_fpr = np.linspace(0, 1, 100)
-
-y_true = y_test.values
-
-for _ in range(n_bootstrap):
-    # sample with replacement
-    indices = rng.integers(0, len(y_true), len(y_true))
-    
-    y_sample = y_true[indices]
-    prob_sample = probabilities_XGB[indices]
-    pred_sample = y_pred_XGB[indices]
-
-    if len(np.unique(y_sample)) < 2:
-        continue
-
-    fpr, tpr, _ = roc_curve(y_sample, prob_sample)
-    
-    tpr_interp = np.interp(mean_fpr, fpr, tpr)
-    tpr_interp[0] = 0.0
-
-    tprs.append(tpr_interp)
-    aucs.append(auc(fpr, tpr))
-    accs.append(accuracy_score(y_sample, pred_sample))
-    precs.append(precision_score(y_sample, pred_sample, zero_division=0))
-    recs.append(recall_score(y_sample, pred_sample, zero_division=0))
-    f1s.append(f1_score(y_sample, pred_sample, zero_division=0))
-
-# Aggregate
-mean_tpr = np.mean(tprs, axis=0)
-std_tpr = np.std(tprs, axis=0)
-
-mean_auc = np.mean(aucs)
-std_auc = np.std(aucs)
-
-# 95% CI for AUC
-ci_lower = np.percentile(aucs, 2.5)
-ci_upper = np.percentile(aucs, 97.5)
-
-acc_mean, acc_lo, acc_hi = summarize(accs)
-prec_mean, prec_lo, prec_hi = summarize(precs)
-rec_mean, rec_lo, rec_hi = summarize(recs)
-f1_mean, f1_lo, f1_hi = summarize(f1s)
-
-print(f"AUC: {mean_auc:.3f} (95% CI: {ci_lower:.3f} – {ci_upper:.3f})")
-print(f"CL Report of XGB:\n", classification_report(y_test, y_pred_XGB, zero_division='warn'))          # plot the ROC-AUC curve and confusion matrix
-print("\nBootstrap Classification Metrics (95% CI):\n")
-print(f"Accuracy  : {acc_mean:.3f} (95% CI: {acc_lo:.3f} – {acc_hi:.3f})")
-print(f"Precision : {prec_mean:.3f} (95% CI: {prec_lo:.3f} – {prec_hi:.3f})")
-print(f"Recall    : {rec_mean:.3f} (95% CI: {rec_lo:.3f} – {rec_hi:.3f})")
-print(f"F1-score  : {f1_mean:.3f} (95% CI: {f1_lo:.3f} – {f1_hi:.3f})")
+mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr = Bootstrap_calculation(y_test, probabilities_XGB, y_pred_XGB)                 # calculate the confidence intervals for the AUC and classification metrics using bootstrapping
+print(f"CL Report of XGB:\n", classification_report(y_test, y_pred_XGB, zero_division='warn'))     # print the classification metrics
 ROC_STD_plot(mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr, "XGBoost model")
 # %%
 
