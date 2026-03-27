@@ -39,7 +39,10 @@ def main():                                                                     
     print("Validation shape:", X_validate.shape)                                           # print the shape of the validation set
     print("Label distribution training set:\n", y_train.value_counts())                    # print the label distribution of the training set
 
-    kf = StratifiedKFold(n_splits=10, shuffle=True, random_state=42)                       # define k-fold
+    # Inner CV for GridSearch
+    inner_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)                  # define k-fold for grid search
+    # Outer CV for ROC ± std
+    outer_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)                  # define k-fold for ROC
 
     #--------------------------------------------------------------
     # Pipeline Logistic regression
@@ -104,6 +107,52 @@ def main():                                                                     
         'classifier__penalty': ['elasticnet'],                                             # use elasticnet als penalty
         'classifier__solver': ['saga']}]                                                   # use saga as solver
    
+    tprs = []
+    aucs = []
+    mean_fpr = np.linspace(0, 1, 100)
+
+    for train_idx, val_idx in outer_cv.split(X_train,y_train):
+        X_tr, X_val = X_train.iloc[train_idx], X_train.iloc[val_idx]
+        y_tr, y_val = y_train.iloc[train_idx], y_train.iloc[val_idx]
+
+        grid_search_regression = GridSearchCV(pipeline_regression, param_grid_regression,
+                                        cv=inner_cv, scoring=scoring, refit = True, n_jobs=-1)
+        grid_search_regression.fit(X_tr, y_tr)
+        best_model = grid_search_regression.best_estimator_
+
+        probs = best_model.predict_proba(X_val)[:, 1]
+
+        fpr, tpr, _ = roc_curve(y_val, probs)
+        tpr_interp = np.interp(mean_fpr, fpr, tpr)
+        tpr_interp[0] = 0.0
+
+        tprs.append(tpr_interp)
+        aucs.append(auc(fpr, tpr))
+
+    mean_tpr = np.mean(tprs, axis=0)
+    std_tpr = np.std(tprs, axis=0)
+    mean_auc = np.mean(aucs)
+    std_auc = np.std(aucs)
+
+    #Fit final model
+    final_grid = GridSearchCV(pipeline_regression, param_grid_regression,
+                                        cv=inner_cv, scoring=scoring, refit = True, n_jobs=-1)
+    final_grid.fit(X_train,y_train)
+    classifier_LR = final_grid.best_estimator_
+
+    #Validation predictions
+    y_pred_regression = classifier_LR.predict(X_validate)
+    probabilities_regression = classifier_LR.predict_proba(X_validate)[:, 1]
+    
+    print('Best parameters found:\n', grid_search_regression.best_params_)
+    print(f"CL Report of LR:\n", classification_report(y_validate, y_pred_regression, zero_division='warn'))
+    
+    AUC_plot_and_confusion_matrix(
+        y_validate, probabilities_regression, y_validate, y_pred_regression, "Logistic regression model"
+        )
+    
+    ROC_STD_plot(mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr)
+
     grid_search_regression = GridSearchCV(                                                 # search the best parameters combination
         pipeline_regression,                                                               # for this model
         param_grid_regression,                                                             # with these parameters as option
