@@ -13,13 +13,7 @@ from sklearn.model_selection import train_test_split, StratifiedKFold, GridSearc
 from functions import check_missing_values, split_features_target, AUC_plot_and_confusion_matrix
 import matplotlib.pyplot as plt
 
-#%% Load Data
-data = pd.read_csv('hn/Trainings_data.csv', index_col=0)
-print(f'The number of samples: {len(data.index)}')
-print(f'The number of columns: {len(data.columns)}')
-print(data['label'].value_counts())
-
-#%% Function to squeeze output from PLS
+#%% Function to squeeze output from PLS -- LG doesnt work > 2D
 def squeeze_output(X):
     if isinstance(X, tuple):
         X = X[0]
@@ -27,6 +21,12 @@ def squeeze_output(X):
 
 #%% Main function
 def main():
+    #%% Load Data
+    data = pd.read_csv('hn/Trainings_data.csv', index_col=0)
+    print(f'The number of samples: {len(data.index)}')
+    print(f'The number of columns: {len(data.columns)}')
+    print(data['label'].value_counts())
+
     scoring = "roc_auc"
 
     # Check missing values
@@ -45,8 +45,9 @@ def main():
     print("Label distribution training set:\n", y_train.value_counts())
 
     # Inner CV for GridSearch
-    inner_cv = StratifiedKFold(n_splits=10, shuffle=True, random_state=42)
-
+    inner_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    # Outer CV for ROC ± std
+    outer_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
     # --------------------------------------------------------------
     # PLS-DA Pipeline
     pipeline_pls_da = Pipeline([
@@ -65,9 +66,6 @@ def main():
         'pls__n_components': [5, 10, 15],
         'classifier__C': [0.01, 0.1, 1, 10]
     }
-
-    # Outer CV for ROC ± std
-    outer_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 
     tprs = []
     aucs = []
@@ -126,7 +124,6 @@ def main():
     probabilities_pls_da = classifier_PLS_DA.predict_proba(X_validate)[:, 1]
 
     print('\nBest parameters found:\n', final_grid.best_params_)
-    print("Best CV score:", final_grid.best_score_)
     print("\nClassification report (validation):\n",
           classification_report(y_validate, y_pred_pls_da, zero_division='warn'))
 
@@ -144,12 +141,8 @@ def main():
                      mean_tpr + std_tpr,
                      alpha=0.2, label="±1 std")
     plt.plot([0,1], [0,1], linestyle="--")
-    plt.xlabel("FPR")
-    plt.ylabel("TPR")
-    plt.title("ROC Curve with STD (Outer CV)")
-    plt.legend()
-    plt.grid()
-    plt.show()
+    plt.xlabel("FPR"), plt.ylabel("TPR"), plt.title("ROC Curve with STD")
+    plt.legend(), plt.grid(), plt.show()
 
     return classifier_PLS_DA
 
