@@ -153,7 +153,7 @@ def main():                                                                     
     AUC_plot_and_confusion_matrix(y_validate, probabilities_regression,                    # plot the ROC-AUC curve and confusion matrix
                                   y_validate, y_pred_regression,                           # use true matrix labels and predicted labels
                                   "Logistic regression model")                             # set the title of the plot
-    ROC_STD_plot(mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr)
+    ROC_STD_plot(mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr, "Logistic regression model")
     
     # Pipeline PLS-DA --------------------------------------------------------------------
     def squeeze_output(X):                                                                 # define a definition
@@ -228,13 +228,14 @@ def main():                                                                     
     AUC_plot_and_confusion_matrix(y_validate, probabilities_pls_da[:,1],                   # plot the ROC-AUC curve and confusion matrix
                                    y_validate, y_pred_pls_da,                              # use true matrix labels and predicted labels
                                    "PLS DA model")                                         # set the title of the plot
-    ROC_STD_plot(mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr)
+    ROC_STD_plot(mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr, "PLS DA model")
 
     #--------------------------------------------------------------
     # Pipeline Support Vector Machine
     pipeline_SVM = Pipeline(steps=[                                                        # define the pipeline
         ('scaler', MinMaxScaler()),                                                        # scale features by minmaxscaler method
-        ('covariance_filter', DropCorrelatedFeatures(threshold=0.95)),                     # filter for correlation, drop features which are correlated higher than 0.95
+        ('covariance_filter', DropCorrelatedFeatures(threshold=0.95)),                     # filter for covariance, drop features which are correlated higher than 0.95
+        ('selector', SFS),                                                                 # placeholder for featureselector in grid search
         ('classifier', SVC(                                                                # define classifier
                         random_state=42,                                                   # same seed for reproducibility
                         max_iter=10000,                                                    # define max iterations
@@ -316,7 +317,7 @@ def main():                                                                     
     AUC_plot_and_confusion_matrix(y_validate, probabilities_SVM[:,1],                      # plot the ROC-AUC curve and confusion matrix
                                   y_validate, y_pred_SVM,                                  # use true matrix labels and predicted labels
                                   "Support vector machine")                                # set the title of the plot
-    ROC_STD_plot(mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr)
+    ROC_STD_plot(mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr, "Support vector machine")
 
     #--------------------------------------------------------------
     # Pipeline Gradient Boosting
@@ -362,30 +363,7 @@ def main():                                                                     
     mean_auc = np.mean(aucs)
     std_auc = np.std(aucs)
 
-    final_grid_search_regression = GridSearchCV(                                           # search the best parameters combination
-        pipeline_regression,                                                               # for this model
-        param_grid_regression,                                                             # with these parameters as option
-        cv=inner_cv,                                                                       # same as earlier defines variable: stratified K fold cross-validation
-        scoring=scoring,                                                                   # scoring is based on the earlier defines variable: ROC-AUC
-        refit = True,                                                                      # retrain the best model on the full training set
-        n_jobs=-1)                                                                         # use all available CPU cores
-
-    final_grid_search_regression.fit(X_train, y_train)                                     # fit the grid search on the training data
-    classifier_LR = final_grid_search_regression.best_estimator_                           # store the best model
-
-    y_pred_regression = classifier_LR.predict(X_validate)                                  # predicht the class labels for the validation set
-    probabilities_regression = classifier_LR.predict_proba(X_validate)[:, 1]               # predicht the probabilities for the positive classes
-    
-    print('Best parameters found:\n', final_grid_search_regression.best_params_)           # print the best parameter combination
-    print("Beste score:", final_grid_search_regression.best_score_)                        # print the best cross-validation score
-    print(f"CL Report of LR:\n", classification_report(                                    # print the classification metrics
-        y_validate, y_pred_regression, zero_division='warn'))                              # compare true and predicted labels
-    AUC_plot_and_confusion_matrix(y_validate, probabilities_regression,                    # plot the ROC-AUC curve and cofusion matrix
-                                  y_validate, y_pred_regression,                           # use true matrix labels and predicted labels
-                                  "Logistic regression model")                             # set the title of the plot
-    ROC_STD_plot(mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr)
-
-    _final_grid_search_XGB = GridSearchCV(                                                 # search the best parameters combination
+    final_grid_search_XGB = GridSearchCV(                                                 # search the best parameters combination
         pipeline_XGB,                                                                      # for this model
         param_grid_XGB,                                                                    # with these parameters as option
         cv=inner_cv,                                                                       # same as earlier defines variable: stratified K fold cross-validation
@@ -393,19 +371,19 @@ def main():                                                                     
         refit = True,                                                                      # retrain the best model on the full training set
         n_jobs=-1)                                                                         # use all avaiable CPU cores
 
-    _final_grid_search_XGB.fit(X_train, y_train)                                           # fit the grid search on the training data
-    classifier_XGB = _final_grid_search_XGB.best_estimator_                                # store the best model
+    final_grid_search_XGB.fit(X_train, y_train)                                           # fit the grid search on the training data
+    classifier_XGB = final_grid_search_XGB.best_estimator_                                # store the best model
 
     y_pred_XGB = classifier_XGB.predict(X_validate)                                        # predict the class labels for the validation set
     probabilities_XGB = classifier_XGB.predict_proba(X_validate)[:, 1]                     # predict the probabilities for the positive classes
 
-    print('Best parameters found:\n', _final_grid_search_XGB.best_params_)                 # print the best parameter combination
+    print('Best parameters found:\n', final_grid_search_XGB.best_params_)                 # print the best parameter combination
     print(f"CL Report of XGB:\n", classification_report(                                   # print the classification metrics
         y_validate, y_pred_XGB, zero_division='warn'))                                     # compare true and predicted labels
     AUC_plot_and_confusion_matrix(y_validate, probabilities_XGB[:,1],                      # plot the ROC-AUC curve and confusion matrix
                                   y_validate, y_pred_XGB,                                  # use true matrix labels and predicted labels
                                   "XGBoost model")                                         # set the title of the plot
-    ROC_STD_plot(mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr)
+    ROC_STD_plot(mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr, "XGBoost model")
 
     return X_train, classifier_LR, classifier_PLS_DA, classifier_SVM, classifier_XGB       # end the definition and give back these data and models
 

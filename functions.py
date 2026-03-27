@@ -93,7 +93,7 @@ def AUC_plot_and_confusion_matrix(labels, probs, y_test, y_pred, model, test=Fal
 
     return roc_auc
 
-def ROC_STD_plot(mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr):
+def ROC_STD_plot(mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr, model):
     plt.figure(figsize=(8,6))
     plt.plot(mean_fpr, mean_tpr,
              label=f"Mean ROC (AUC = {mean_auc:.3f} ± {std_auc:.3f})",
@@ -103,6 +103,6 @@ def ROC_STD_plot(mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr):
                      mean_tpr + std_tpr,
                      alpha=0.2, label="±1 std")
     plt.plot([0,1], [0,1], linestyle="--")
-    plt.xlabel("FPR"), plt.ylabel("TPR"), plt.title("ROC Curve with STD")
+    plt.xlabel("FPR"), plt.ylabel("TPR"), plt.title(f"ROC Curve with STD\n{model}")
     plt.legend(), plt.grid(), plt.show()
 # %%
