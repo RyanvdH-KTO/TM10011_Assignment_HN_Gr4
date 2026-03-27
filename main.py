@@ -1,10 +1,10 @@
 #%% Import packages
 # Import packages
-import numpy as np                                                                         # inport package for nummeric calculations and array operations 
+import numpy as np                                                                         # import package for nummeric calculations and array operations 
 import pandas as pd                                                                        # import package reading and handling tabular data
 import xgboost as xgb                                                                      # import package for XGBoost classification
-from sklearn.svm import SVC                                                                # import package fpr support vector machine classification
-from sklearn.pipeline import Pipeline                                                      # import package for building preporcessing and modeling pipelines
+from sklearn.svm import SVC                                                                # import package for support vector machine classification
+from sklearn.pipeline import Pipeline                                                      # import package for building preprocessing and modeling pipelines
 from sklearn.feature_selection import RFE                                                  # import package for recursive feature elimination
 from sklearn.preprocessing import MinMaxScaler                                             # import package scaling features to a fixed range
 from sklearn.metrics import classification_report                                          # import package for evaluating classification models
@@ -28,7 +28,7 @@ def main():                                                                     
     scoring = "roc_auc"                                                                    # define a variable to use for scoring. Use ROC-AUC for scoring
     check_missing_values(data)                                                             # check for missing values 
     X, y = split_features_target(data)                                                     # split dataset into features and encoded labels
-    X_train, X_validate, y_train, y_validate = train_test_split(                           # split into train and validateset
+    X_train, X_validate, y_train, y_validate = train_test_split(                           # split into train and validation set
         X,                                                                                 # feature matrix
         y,                                                                                 # target vector
         test_size=0.2,                                                                     # 20% of data to validationset 
@@ -48,7 +48,7 @@ def main():                                                                     
     # Pipeline Logistic regression
     pipeline_regression = Pipeline(steps=[                                                 # define the pipeline
         ('scaler', MinMaxScaler()),                                                        # scale features by minmaxscaler method
-        ('covariance_filter', DropCorrelatedFeatures(threshold=0.95)),                     # filter for covariance, drop features which are correlated higher than 0.95
+        ('covariance_filter', DropCorrelatedFeatures(threshold=0.95)),                     # filter for correlation, drop features which are correlated higher than 0.95
         ('selector', SFS),                                                                 # placeholder for featureselector in grid search
         ('classifier', LogisticRegression(                                                 # define classifier
                         penalty='l1',                                                      # penalty settings
@@ -74,14 +74,14 @@ def main():                                                                     
                                             max_iter=1000,                                 # define max iterations
                                             random_state=42),                              # same seed for reproducibility
                                             n_features_to_select="auto",                   # automatically determine the optimal number of features to keep
-                                            direction="backward",                          # remove a feature one by one till performance worsen beyond a threshold
+                                            direction="backward",                          # remove a feature one by one till performance worsens beyond a threshold
                                             scoring=scoring,                               # scoring is based on the earlier defines variable: ROC-AUC
                                             cv=0,                                          # this is the cross-validation in the selector
                                             n_jobs=1)],                                    # use 1 CPU core, so it runs faster
         'classifier__C': [0.001, 0.01, 0.1, 1, 10],                                        # test different regularization strengths
         'classifier__penalty': ['l1', 'l2'],                                               # test L1 and L2 regularization as penalty
         'classifier__solver': ['liblinear']                                                # use liblinear as solver
-    }, {                                                                                   # choose between these options, with different in penaly and solvers
+    }, {                                                                                   # choose between these options, with different in penalty and solvers
         'selector': [RFE(LogisticRegression(                                               # RFE as  estimator option
                                             max_iter=1000,                                 # define max iterations
                                             random_state=42),                              # same seed for reproducibility
@@ -98,7 +98,7 @@ def main():                                                                     
                                             max_iter=1000,                                 # define max iterations
                                             random_state=42),                              # same seed for reproducibility
                                             n_features_to_select="auto",                   # automatically determine the optimal number of features to keep
-                                            direction="backward",                          # remove a feature one by one till performance worsen beyond a threshold
+                                            direction="backward",                          # remove a feature one by one till performance worsens beyond a threshold
                                             scoring=scoring,                               # scoring is based on the earlier defines variable: ROC-AUC
                                             cv=0,                                          # this is the cross-validation in the selector
                                             n_jobs=1)],                                    # use 1 CPU core, so it runs faster
@@ -159,19 +159,19 @@ def main():                                                                     
         cv=kf,                                                                             # same as earlier defines variable: stratified K fold cross-validation
         scoring=scoring,                                                                   # scoring is based on the earlier defines variable: ROC-AUC
         refit = True,                                                                      # retrain the best model on the full training set
-        n_jobs=-1)                                                                         # use all avaiable CPU cores
+        n_jobs=-1)                                                                         # use all available CPU cores
 
     grid_search_regression.fit(X_train, y_train)                                           # fit the grid search on the training data
     classifier_LR = grid_search_regression.best_estimator_                                 # store the best model
 
-    y_pred_regression = classifier_LR.predict(X_validate)                                  # predicht the class labels for the validation set
-    probabilities_regression = classifier_LR.predict_proba(X_validate)[:, 1]               # predicht the probabilities for the positive classes
+    y_pred_regression = classifier_LR.predict(X_validate)                                  # predict the class labels for the validation set
+    probabilities_regression = classifier_LR.predict_proba(X_validate)[:, 1]               # predict the probabilities for the positive classes
     
     print('Best parameters found:\n', grid_search_regression.best_params_)                 # print the best parameter combination
     print("Beste score:", grid_search_regression.best_score_)                              # print the best cross-validation score
     print(f"CL Report of LR:\n", classification_report(                                    # print the classification metrics
         y_validate, y_pred_regression, zero_division='warn'))                              # compare true and predicted labels
-    AUC_plot_and_confusion_matrix(y_validate, probabilities_regression,                    # plot the ROC-AUC curve and cofusion matrix
+    AUC_plot_and_confusion_matrix(y_validate, probabilities_regression,                    # plot the ROC-AUC curve and confusion matrix
                                   y_validate, y_pred_regression,                           # use true matrix labels and predicted labels
                                   "Logistic regression model")                             # set the title of the plot
 
@@ -183,7 +183,7 @@ def main():                                                                     
     
     pipeline_pls_da = Pipeline([                                                           # define the pipeline
         ('scaler', MinMaxScaler()),                                                        # scale features by minmaxscaler method
-        ('covariance_filter', DropCorrelatedFeatures(threshold=0.95)),                     # filter for covariance, drop features which are correlated higher than 0.95
+        ('covariance_filter', DropCorrelatedFeatures(threshold=0.95)),                     # filter for correlation, drop features which are correlated higher than 0.95
         ('pls', PLSRegression(                                                             # transform the data into a smaller set of latent PLS components
             n_components=10,                                                               # use 10 components to summarize the most relevant information
             scale=False,                                                                   # disable internal scaling because scaling is already done earlier
@@ -207,19 +207,19 @@ def main():                                                                     
         cv=kf,                                                                             # same as earlier defines variable: stratified K fold cross-validation
         scoring=scoring,                                                                   # scoring is based on the earlier defines variable: ROC-AUC
         refit = True,                                                                      # retrain the best model on the full training set
-        n_jobs=-1)                                                                         # use all avaiable CPU cores
+        n_jobs=-1)                                                                         # use all available CPU cores
     
     grid_search_pls_da.fit(X_train, y_train)                                               # fit the grid search on the training data
     classifier_PLS_DA = grid_search_pls_da.best_estimator_                                 # store the best model
     
-    y_pred_pls_da = classifier_PLS_DA.predict(X_validate)                                  # predicht the class labels for the validation set
-    probabilities_pls_da = classifier_PLS_DA.predict_proba(X_validate)                     # predicht the probabilities for the positive classes
+    y_pred_pls_da = classifier_PLS_DA.predict(X_validate)                                  # predict the class labels for the validation set
+    probabilities_pls_da = classifier_PLS_DA.predict_proba(X_validate)                     # predict the probabilities for the positive classes
 
     print('Best parameters found:\n', grid_search_pls_da.best_params_)                     # print the best parameter combination
     print("Beste score:", grid_search_pls_da.best_score_)                                  # print the best cross-validation score
     print(f"CL Report of PLS-DA:\n", classification_report(                                # print the classification metrics
         y_validate, y_pred_pls_da, zero_division='warn'))                                  # compare true and predicted labels
-    AUC_plot_and_confusion_matrix(y_validate, probabilities_pls_da[:,1],                   # plot the ROC-AUC curve and cofusion matrix
+    AUC_plot_and_confusion_matrix(y_validate, probabilities_pls_da[:,1],                   # plot the ROC-AUC curve and confusion matrix
                                    y_validate, y_pred_pls_da,                              # use true matrix labels and predicted labels
                                    "PLS DA model")                                         # set the title of the plot
 
@@ -227,13 +227,13 @@ def main():                                                                     
     # Pipeline Support Vector Machine
     pipeline_SVM = Pipeline(steps=[                                                        # define the pipeline
         ('scaler', MinMaxScaler()),                                                        # scale features by minmaxscaler method
-        ('covariance_filter', DropCorrelatedFeatures(threshold=0.95)),                     # filter for covariance, drop features which are correlated higher than 0.95
+        ('covariance_filter', DropCorrelatedFeatures(threshold=0.95)),                     # filter for correlation, drop features which are correlated higher than 0.95
         ('classifier', SVC(                                                                # define classifier
                         random_state=42,                                                   # same seed for reproducibility
                         max_iter=10000,                                                    # define max iterations
                         class_weight='balanced',                                           # give more weight to the minority class
                         kernel = 'linear',                                                 # use this kernel as default, meaning the model separates classes with a straight decision boundary 
-                        shrinking = True,                                                  # use a faster optimization shortcut by temporarily ignoring less important support vectors, makes it much faster and does not really worsen the performance
+                        shrinking = True,                                                  # use a faster optimization shortcut by temporarily ignoring less important support vectors, makes it much faster and does not really worsens the performance
                         probability=True))])                                               # enable probability estimates for each prediction
 
     param_grid_SVM = {                                                                     # define the grid-parameter
@@ -254,7 +254,7 @@ def main():                                                                     
                             max_iter=1000,                                                 # define max iterations
                             random_state=42),                                              # same seed for reproducibility
                             n_features_to_select="auto",                                   # automatically determine the optimal number of features to keep
-                            direction="backward",                                          # remove a feature one by one till performance worsen beyond a threshold
+                            direction="backward",                                          # remove a feature one by one till performance worsens beyond a threshold
                             scoring=scoring,                                               # scoring is based on the earlier defines variable: ROC-AUC
                             cv=0,                                                          # this is the cross-validation in the selector
                             n_jobs=1)],                                                    # use 1 CPU core, so it runs faster
@@ -268,28 +268,28 @@ def main():                                                                     
         cv=kf,                                                                             # same as earlier defines variable: stratified K fold cross-validation
         scoring=scoring,                                                                   # scoring is based on the earlier defines variable: ROC-AUC
         refit = True,                                                                      # retrain the best model on the full training set
-        n_jobs=-1)                                                                         # use all avaiable CPU cores
+        n_jobs=-1)                                                                         # use all available CPU cores
    
     grid_search_SVM.fit(X_train, y_train)                                                  # fit the grid search on the training data
     classifier_SVM = grid_search_SVM.best_estimator_                                       # store the best model
 
     y_pred_XGB = classifier_XGB.predict(X_validate)                                        # predict the labels
     probabilities_XGB = classifier_XGB.predict_proba(X_validate)                           # predict the probabilities cN XGBoost
-    y_pred_SVM = classifier_SVM.predict(X_validate)                                        # predicht the class labels for the validation set
-    probabilities_SVM = classifier_SVM.predict_proba(X_validate)                           # predicht the probabilities for the positive classes
+    y_pred_SVM = classifier_SVM.predict(X_validate)                                        # predict the class labels for the validation set
+    probabilities_SVM = classifier_SVM.predict_proba(X_validate)                           # predict the probabilities for the positive classes
 
     print('Best parameters found:\n', grid_search_SVM.best_params_)                        # print the best parameter combination
     print("Beste score:", grid_search_SVM.best_score_)                                     # print the best cross-validation score
     print(f"CL Report of SVM:\n", classification_report(                                   # print the classification metrics
         y_validate, y_pred_SVM, zero_division='warn'))                                     # compare true and predicted labels
-    AUC_plot_and_confusion_matrix(y_validate, probabilities_SVM[:,1],                      # plot the ROC-AUC curve and cofusion matrix
+    AUC_plot_and_confusion_matrix(y_validate, probabilities_SVM[:,1],                      # plot the ROC-AUC curve and confusion matrix
                                   y_validate, y_pred_SVM,                                  # use true matrix labels and predicted labels
                                   "Support vector machine")                                # set the title of the plot
 
     #--------------------------------------------------------------
     # Pipeline Gradient Boosting
     pipeline_XGB = Pipeline(steps=[                                                        # define the pipeline
-        ('covariance_filter', DropCorrelatedFeatures(threshold=0.95)),                     # filter for covariance, drop features which are correlated higher than 0.95
+        ('covariance_filter', DropCorrelatedFeatures(threshold=0.95)),                     # filter for correlation, drop features which are correlated higher than 0.95
         ('classifier', xgb.XGBClassifier(                                                  # define classifier
                         random_state=42,                                                   # same seed for reproducibility
                         n_estimators=1000,                                                 # use 1000 boosting trees as the initial setting
@@ -298,7 +298,7 @@ def main():                                                                     
     
     param_grid_XGB = {                                                                     # define the grid-parameter
     'classifier__n_estimators': [100, 300, 500],                                           # test different numbers of trees
-    'classifier__max_depth': [3, 5, 7],                                                    # test different numbers of three depths to control model complexicity
+    'classifier__max_depth': [3, 5, 7],                                                    # test different numbers of three depths to control model complexity
     'classifier__learning_rate': [0.01, 0.05, 0.1],                                        # test different learning rates for the boosting process
     'classifier__subsample': [0.8, 1.0],                                                   # test different fractions of training samples used per tree
     'classifier__colsample_bytree': [0.8, 1.0]}                                            # test different fractions of features used per tree
@@ -309,19 +309,19 @@ def main():                                                                     
         cv=kf,                                                                             # same as earlier defines variable: stratified K fold cross-validation
         scoring=scoring,                                                                   # scoring is based on the earlier defines variable: ROC-AUC
         refit = True,                                                                      # retrain the best model on the full training set
-        n_jobs=-1)                                                                         # use all avaiable CPU cores
+        n_jobs=-1)                                                                         # use all available CPU cores
 
     grid_search_XGB.fit(X_train, y_train)                                                  # fit the grid search on the training data
     classifier_XGB = grid_search_XGB.best_estimator_                                       # store the best model
 
-    y_pred_XGB = classifier_XGB.predict(X_validate)                                        # predicht the class labels for the validation set
-    probabilities_XGB = classifier_XGB.predict_proba(X_validate)[:, 1]                     # predicht the probabilities for the positive classes
+    y_pred_XGB = classifier_XGB.predict(X_validate)                                        # predict the class labels for the validation set
+    probabilities_XGB = classifier_XGB.predict_proba(X_validate)[:, 1]                     # predict the probabilities for the positive classes
 
     print('Best parameters found:\n', grid_search_XGB.best_params_)                        # print the best parameter combination
     print("Beste score:", grid_search_XGB.best_score_)                                     # print the best cross-validation score
     print(f"CL Report of XGB:\n", classification_report(                                   # print the classification metrics
         y_validate, y_pred_XGB, zero_division='warn'))                                     # compare true and predicted labels
-    AUC_plot_and_confusion_matrix(y_validate, probabilities_XGB[:,1],                      # plot the ROC-AUC curve and cofusion matrix
+    AUC_plot_and_confusion_matrix(y_validate, probabilities_XGB[:,1],                      # plot the ROC-AUC curve and confusion matrix
                                   y_validate, y_pred_XGB,                                  # use true matrix labels and predicted labels
                                   "XGBoost model")                                         # set the title of the plot
 
@@ -341,37 +341,46 @@ check_missing_values(test_data)                                                 
 X_test, y_test = split_features_target(test_data)                                          # split the test dataset into features and target labels
 
 print("Test shape:", X_test.shape)                                                         # print the shape of the full test feature set
-print("Label distribution training set:\n", y_test.value_counts())                         # print the class distribution of the test target labels
+print("Label distribution training set:\n", y_test.value_counts())                         # print the class distribution of the target labels
 
 #%% LR test
 y_pred_regression = classifier_LR.predict(X_test)                                          # predict de labels
 probabilities_regression = classifier_LR.predict_proba(X_test)[:, 1]                       # predict the probabilities
 print(y_pred_regression.shape)                                                             # print the shape of the predicted labels
-print(f"CL Report of LR:\n", classification_report(y_test, y_pred_regression, zero_division='warn'))      # print the classification metrics
-AUC_plot_and_confusion_matrix(y_test, probabilities_regression,                            # plot the ROC-AUC curve and cofusion matrix
+print(f"CL Report of LR:\n", classification_report(y_test, y_pred_regression, zero_division='warn'))     # print the classification metrics
+AUC_plot_and_confusion_matrix(y_test, probabilities_regression,                            # plot the ROC-AUC curve and confusion matrix
                               y_test, y_pred_regression,                                   # use true matrix labels and predicted labels
                               "Logistic regression model",                                 # set the title of the plot and confusion matrix
                               test=True)                                                   # put the test setting on on
 
 # PLS-DA test
-y_pred_pls_da = classifier_PLS_DA.predict(X_test)
-probabilities_pls_da = classifier_PLS_DA.predict_proba(X_test)
+y_pred_pls_da = classifier_PLS_DA.predict(X_test)                                          # predict the labels
+probabilities_pls_da = classifier_PLS_DA.predict_proba(X_test)                             # predict the probabilities
 
-print(f"CL Report of PLS-DA:\n", classification_report(y_test, y_pred_pls_da, zero_division='warn'))
-AUC_plot_and_confusion_matrix(y_test, probabilities_pls_da[:,1], y_test, y_pred_pls_da, "PLS DA model", test=True)
+print(f"CL Report of PLS-DA:\n", classification_report(y_test, y_pred_pls_da, zero_division='warn'))    # plot the ROC-AUC curve and confusion matrix
+AUC_plot_and_confusion_matrix(y_test, probabilities_pls_da[:,1],                           # plot the ROC-AUC curve and confusion matrix
+                              y_test, y_pred_pls_da,                                       # use true matrix labels and predicted labels
+                              "PLS DA model",                                              # set the title of the plot
+                              test=True)                                                   # put the settings on test = true 
 
 # SVM test
-y_pred_SVM = classifier_SVM.predict(X_test) 
-probabilities_SVM = classifier_SVM.predict_proba(X_test)
+y_pred_SVM = classifier_SVM.predict(X_test)                                                # predict the labels
+probabilities_SVM = classifier_SVM.predict_proba(X_test)                                   # predict the probabilities
 
-print(f"CL Report of SVM:\n", classification_report(y_test, y_pred_SVM, zero_division='warn'))
-AUC_plot_and_confusion_matrix(y_test, probabilities_SVM, y_test, y_pred_SVM, "Support vector machine", test=True)
+print(f"CL Report of SVM:\n", classification_report(y_test, y_pred_SVM, zero_division='warn'))          # plot the ROC-AUC curve and confusion matrix
+AUC_plot_and_confusion_matrix(y_test, probabilities_SVM,                                   # plot the ROC-AUC curve and confusion matrix
+                              y_test, y_pred_SVM,                                          # use true matrix labels and predicted labels
+                              "Support vector machine",                                    # set the title of the plot
+                              test=True)                                                   # put the settings on test = true 
     
 # XGB test
-y_pred_XGB = classifier_XGB.predict(X_test)  
-propabilities_XGB = classifier_XGB.predict_proba(X_test)
+y_pred_XGB = classifier_XGB.predict(X_test)                                                # predict the labels
+propabilities_XGB = classifier_XGB.predict_proba(X_test)                                   # predict the probabilities
 
-print(f"CL Report of XGB:\n", classification_report(y_test, y_pred_XGB, zero_division='warn'))
-AUC_plot_and_confusion_matrix(y_test, propabilities_XGB[:,1], y_test, y_pred_XGB, "XGBoost model", test=True)
+print(f"CL Report of XGB:\n", classification_report(y_test, y_pred_XGB, zero_division='warn'))          # plot the ROC-AUC curve and confusion matrix
+AUC_plot_and_confusion_matrix(y_test, propabilities_XGB[:,1],                              # plot the ROC-AUC curve and confusion matrix
+                              y_test, y_pred_XGB,                                          # use true matrix labels and predicted labels
+                              "XGBoost model",                                             # set the title of the plot
+                              test=True)                                                   # put the settings on test = true 
 
 # %%
