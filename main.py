@@ -10,7 +10,7 @@ from sklearn.cross_decomposition import PLSRegression
 from feature_engine.selection import DropCorrelatedFeatures
 from sklearn.model_selection import train_test_split, StratifiedKFold, GridSearchCV
 
-from functions import check_missing_values, split_features_target, AUC_plot_and_confusion_matrix
+from functions import check_missing_values, split_features_target, AUC_plot_and_confusion_matrix, ROC_STD_plot
 import matplotlib.pyplot as plt
 
 #%% Function to squeeze output from PLS -- LG doesnt work > 2D
@@ -92,7 +92,6 @@ def main():
 
         grid_search.fit(X_tr, y_tr)
         best_model = grid_search.best_estimator_
-
         probs = best_model.predict_proba(X_val)[:, 1]
 
         fpr, tpr, _ = roc_curve(y_val, probs)
@@ -132,19 +131,11 @@ def main():
     )
 
     # Plot ROC ± std
-    plt.figure(figsize=(8,6))
-    plt.plot(mean_fpr, mean_tpr,
-             label=f"Mean ROC (AUC = {mean_auc:.3f} ± {std_auc:.3f})",
-             linewidth=2)
-    plt.fill_between(mean_fpr,
-                     mean_tpr - std_tpr,
-                     mean_tpr + std_tpr,
-                     alpha=0.2, label="±1 std")
-    plt.plot([0,1], [0,1], linestyle="--")
-    plt.xlabel("FPR"), plt.ylabel("TPR"), plt.title("ROC Curve with STD")
-    plt.legend(), plt.grid(), plt.show()
+    ROC_STD_plot(mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr)
 
     return classifier_PLS_DA
+# --------------------------------------------------------------
+    # PLS-DA Pipeline
 
 #%% Run training
 if __name__ == "__main__":
