@@ -261,36 +261,37 @@ def main():                                                                     
                                   y_validate, y_pred_XGB,                                  # use true matrix labels and predicted labels
                                   "XGBoost model")                                         # set the title of the plot
 
-    return X_train, classifier_LR, classifier_PLS_DA, classifier_SVM, classifier_XGB, LR_selector, SVM_selector # end the definition and give back these data and models
+    return X_train, classifier_LR, classifier_PLS_DA, classifier_SVM, classifier_XGB, LR_selector, SVM_selector   # end the definition and give back these data and models
 
 #%% Run model
-if __name__ == "__main__":
-    X_train, classifier_LR, classifier_PLS_DA, classifier_SVM, classifier_XGB, LR_selector, SVM_selector = main()
+if __name__ == "__main__":                                                                 # run this code only when the script is executed directly
+    X_train, classifier_LR, classifier_PLS_DA, classifier_SVM, classifier_XGB, LR_selector, SVM_selector = main() # run the main function and store the trained models and selected features
+
 #%% Test with Test Data
-# Load Test Data
-test_data = pd.read_csv('hn/Test_data.csv', index_col=0)
-print(f'The number of samples: {len(test_data.index)}')
-print(f'The number of columns: {len(test_data.columns)}')
-print(test_data['label'].value_counts())
+test_data = pd.read_csv('hn/Test_data.csv', index_col=0)                                   # load the test data by reading the CSV
+print(f'The number of samples: {len(test_data.index)}')                                    # print the number of samples. The number of rows equal the number of samples
+print(f'The number of features: {len(test_data.columns)}')                                 # print the number of features/ The number of columns correspond to the number of features
+print(test_data['label'].value_counts())                                                   # print datatype
 
-# Preprocessing
-check_missing_values(test_data)
-X_test, y_test = split_features_target(test_data)
-X_test_selected_LR = X_test[:, LR_selector]
-X_test_selected_SVM = X_test[:, SVM_selector]
+check_missing_values(test_data)                                                            # check for missing values
+X_test, y_test = split_features_target(test_data)                                          # split the test dataset into features and target labels
+X_test_selected_LR = X_test[:, LR_selector]                                                # select the features used by the Logistic Regression model
+X_test_selected_SVM = X_test[:, SVM_selector]                                              # select the features used by the SVM model
 
-print("Test shape:", X_test.shape)
-print("Test LR shape", X_test_selected_LR.shape)
-print("Test SVM shape", X_test_selected_SVM.shape)
-print("Label distribution training set:\n", y_test.value_counts())
+print("Test shape:", X_test.shape)                                                         # print the shape of the full test feature set
+print("Test LR shape", X_test_selected_LR.shape)                                           # print the shape of the selected test features for Logistic Regression
+print("Test SVM shape", X_test_selected_SVM.shape)                                         # print the shape of the selected test features for SVM
+print("Label distribution training set:\n", y_test.value_counts())                         # print the class distribution of the test target labels
 
-#%%
-# LR test
-y_pred_regression = classifier_LR.predict(X_test_selected_LR)
-probabilities_regression = classifier_LR.predict_proba(X_test_selected_LR)[:, 1]
-print(y_pred_regression.shape)
-print(f"CL Report of LR:\n", classification_report(y_test, y_pred_regression, zero_division='warn'))
-AUC_plot_and_confusion_matrix(y_test, probabilities_regression, y_test, y_pred_regression, "Logistic regression model", test=True)
+#%% LR test
+y_pred_regression = classifier_LR.predict(X_test_selected_LR)                              # predict de labels
+probabilities_regression = classifier_LR.predict_proba(X_test_selected_LR)[:, 1]           # predict the probabilities
+print(y_pred_regression.shape)                                                             # print the shape of the predicted labels
+print(f"CL Report of LR:\n", classification_report(y_test, y_pred_regression, zero_division='warn'))      # print the classification metrics
+AUC_plot_and_confusion_matrix(y_test, probabilities_regression,                            # plot the ROC-AUC curve and cofusion matrix
+                              y_test, y_pred_regression,                                   # use true matrix labels and predicted labels
+                              "Logistic regression model",                                 # set the title of the plot and confusion matrix
+                              test=True)                                                   # put the test setting on on
 
 # PLS-DA test
 y_pred_pls_da = classifier_PLS_DA.predict(X_test)
@@ -314,6 +315,5 @@ if propabilities_XGB.ndim == 1:
 
 print(f"CL Report of XGB:\n", classification_report(y_test, y_pred_XGB, zero_division='warn'))
 AUC_plot_and_confusion_matrix(y_test, propabilities_XGB[:,1], y_test, y_pred_XGB, "XGBoost model", test=True)
-
 
 # %%
