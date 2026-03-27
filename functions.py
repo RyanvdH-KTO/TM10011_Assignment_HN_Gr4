@@ -107,7 +107,7 @@ def ROC_STD_plot(mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr):
     plt.legend(), plt.grid(), plt.show()
 
 #Learning curve function
-def plot_learning_curve(train_sizes, train_mean, train_std, val_mean, val_std, model_name="Model"):
+def learning_curve_plot(train_sizes, train_mean, train_std, val_mean, val_std, model_name="Model"):
     plt.figure(figsize=(8, 5))
     plt.plot(train_sizes, train_mean, label="Training score",   color="steelblue", lw=2)
     plt.plot(train_sizes, val_mean,   label="Validation score", color="darkorange", lw=2)
