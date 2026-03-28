@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 #%% Import packages
 # Import packages
 import numpy as np                                                                         # import package for nummeric calculations and array operations 
@@ -17,6 +18,20 @@ from sklearn.model_selection import train_test_split, StratifiedKFold, GridSearc
 from functions import check_missing_values, split_features_target                          # import zelf gebouwde functie
 from functions import Bootstrap_calculation, ROC_STD_plot                                  # import zelf gebouwde functie
 
+=======
+#%%
+import pandas as pd
+from hn.load_data import load_data
+from sklearn.model_selection import train_test_split, GridSearchCV, StratifiedKFold
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
+from sklearn.pipeline import Pipeline
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import precision_score, recall_score, f1_score, roc_curve, auc, confusion_matrix, classification_report
+from sklearn.svm import SVC
+import importlib, subprocess, sys; package = "xgboost"; importlib.import_module(package) if importlib.util.find_spec(package) else subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+import xgboost as xgb
+import matplotlib.pyplot as plt
+>>>>>>> Support-vector
 #%% Load Data
 data = pd.read_csv('hn/Trainings_data.csv', index_col=0)                                   # read the csv with 
 print(f'The number of samples: {len(data.index)}')                                         # print the number of samples. The number of rows equal the number of samples
