@@ -15,7 +15,7 @@ from feature_engine.selection import DropCorrelatedFeatures                     
 from sklearn.feature_selection import SequentialFeatureSelector as SFS                     # import package for sequential feature selection
 from sklearn.model_selection import train_test_split, StratifiedKFold, GridSearchCV        # import package for data splitting, cross-validation and grid search
 from functions import check_missing_values, split_features_target                          # import zelf gebouwde functie
-from functions import Bootstrap_calculation, ROC_STD_plot                                  # import zelf gebouwde functie
+from functions import Bootstrap_calculation, ROC_STD_plot, learning_curve_plot             # import zelf gebouwde functie
 
 #%% Load Data
 data = pd.read_csv('hn/Trainings_data.csv', index_col=0)                                   # read the csv with 
@@ -68,7 +68,7 @@ def main():                                                                     
                                             n_features_to_select="auto",                   # automatically determine the optimal number of features to keep
                                             direction="forward",                           # add the feature one by one till performance doesn't improve
                                             scoring=scoring,                               # scoring is based on the earlier defines variable: ROC-AUC
-                                            cv=0,                                          # this is the cross-validation in the selector
+                                            cv=1,                                          # this is the cross-validation in the selector
                                             n_jobs=1),                                     # use 1 CPU core, so it runs faster
                     SFS(LogisticRegression(                                                # SFS backward as feature selector option 
                                             max_iter=1000,                                 # define max iterations
@@ -76,7 +76,7 @@ def main():                                                                     
                                             n_features_to_select="auto",                   # automatically determine the optimal number of features to keep
                                             direction="backward",                          # remove a feature one by one till performance worsens beyond a threshold
                                             scoring=scoring,                               # scoring is based on the earlier defines variable: ROC-AUC
-                                            cv=0,                                          # this is the cross-validation in the selector
+                                            cv=1,                                          # this is the cross-validation in the selector
                                             n_jobs=1)],                                    # use 1 CPU core, so it runs faster
         'classifier__C': [0.001, 0.01, 0.1, 1, 10],                                        # test different regularization strengths
         'classifier__penalty': ['l1', 'l2'],                                               # test L1 and L2 regularization as penalty
@@ -92,7 +92,7 @@ def main():                                                                     
                                             n_features_to_select="auto",                   # automatically determine the optimal number of features to keep
                                             direction="forward",                           # add the feature one by one till performance doesn't improve
                                             scoring=scoring,                               # scoring is based on the earlier defines variable: ROC-AUC
-                                            cv=0,                                          # this is the cross-validation in the selector
+                                            cv=1,                                          # this is the cross-validation in the selector
                                             n_jobs=1),                                     # use 1 CPU core, so it runs faster
                     SFS(LogisticRegression(                                                # SFS backward as feature selector option 
                                             max_iter=1000,                                 # define max iterations
@@ -100,7 +100,7 @@ def main():                                                                     
                                             n_features_to_select="auto",                   # automatically determine the optimal number of features to keep
                                             direction="backward",                          # remove a feature one by one till performance worsens beyond a threshold
                                             scoring=scoring,                               # scoring is based on the earlier defines variable: ROC-AUC
-                                            cv=0,                                          # this is the cross-validation in the selector
+                                            cv=1,                                          # this is the cross-validation in the selector
                                             n_jobs=1)],                                    # use 1 CPU core, so it runs faster
         'classifier__C': [0.001, 0.01, 0.1, 1, 10],                                        # test different regularization strengths
         'classifier__penalty': ['elasticnet'],                                             # use elasticnet als penalty
@@ -155,6 +155,22 @@ def main():                                                                     
         y_validate, y_pred_regression, zero_division='warn'))                              # compare true and predicted labels
     ROC_STD_plot(mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr, "Logistic regression model") # plot the ROC STD 
     
+    #Add learning curve plot
+    from sklearn.model_selection import learning_curve
+
+    train_sizes, train_scores, val_scores = learning_curve(
+        classifier_LR, X_train, y_train,
+        cv=StratifiedKFold(n_splits=5, shuffle=True, random_state=42), scoring="roc_auc",
+        train_sizes=np.linspace(0.1, 1.0, 10),
+        n_jobs=-1
+    )
+
+    learning_curve_plot(
+        train_sizes,
+        np.mean(train_scores, axis=1), np.std(train_scores, axis=1),
+        np.mean(val_scores,   axis=1), np.std(val_scores,   axis=1),
+        model_name="LR"
+    )
     # Pipeline PLS-DA --------------------------------------------------------------------
     def squeeze_output(X):                                                                 # define a definition
         if isinstance(X, tuple):                                                           # if the output is a tuple
@@ -230,6 +246,20 @@ def main():                                                                     
         y_validate, y_pred_pls_da, zero_division='warn'))                                  # compare true and predicted labels
     ROC_STD_plot(mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr, "PLS DA model")           # plot the ROC STD 
 
+    #Add learning curve plot
+    train_sizes, train_scores, val_scores = learning_curve(
+        classifier_PLS_DA, X_train, y_train,
+        cv=StratifiedKFold(n_splits=5, shuffle=True, random_state=42), scoring="roc_auc",
+        train_sizes=np.linspace(0.1, 1.0, 10),
+        n_jobs=-1
+    )
+
+    learning_curve_plot(
+        train_sizes,
+        np.mean(train_scores, axis=1), np.std(train_scores, axis=1),
+        np.mean(val_scores,   axis=1), np.std(val_scores,   axis=1),
+        model_name="PLS-DA"
+    )   
     #--------------------------------------------------------------
     # Pipeline Support Vector Machine
     pipeline_SVM = Pipeline(steps=[                                                        # define the pipeline
@@ -256,7 +286,7 @@ def main():                                                                     
                             n_features_to_select="auto",                                   # automatically determine the optimal number of features to keep
                             direction="forward",                                           # add the feature one by one till it doesn't improve
                             scoring=scoring,                                               # scoring is based on the earlier defines variable: ROC-AUC
-                            cv=0,                                                          # this is the cross-validation in the selector
+                            cv=1,                                                          # this is the cross-validation in the selector
                             n_jobs=1),                                                     # use 1 CPU core, so it runs faster
                     SFS(SVC(                                                               # SFS backward as feature selector option 
                             max_iter=1000,                                                 # define max iterations
@@ -264,7 +294,7 @@ def main():                                                                     
                             n_features_to_select="auto",                                   # automatically determine the optimal number of features to keep
                             direction="backward",                                          # remove a feature one by one till performance worsens beyond a threshold
                             scoring=scoring,                                               # scoring is based on the earlier defines variable: ROC-AUC
-                            cv=0,                                                          # this is the cross-validation in the selector
+                            cv=1,                                                          # this is the cross-validation in the selector
                             n_jobs=1)],                                                    # use 1 CPU core, so it runs faster
         'classifier__kernel': ['linear', 'poly', 'rbf', 'sigmoid'],                        # test different kernel functions to learn linear or non-linear decision boundaries
         'classifier__C': [0.0001, 0.001, 0.01, 1, 5, 10, 100, 1000],                       # test different regularization strengths
@@ -318,7 +348,21 @@ def main():                                                                     
     print(f"CL Report of SVM:\n", classification_report(                                   # print the classification metrics
         y_validate, y_pred_SVM, zero_division='warn'))                                     # compare true and predicted labels
     ROC_STD_plot(mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr, "Support vector machine") # plot the ROC STD 
+    
+    #Add learning curve plot
+    train_sizes, train_scores, val_scores = learning_curve(
+        classifier_SVM, X_train, y_train,
+        cv=StratifiedKFold(n_splits=5, shuffle=True, random_state=42), scoring="roc_auc",
+        train_sizes=np.linspace(0.1, 1.0, 10),
+        n_jobs=-1
+    )
 
+    learning_curve_plot(
+        train_sizes,
+        np.mean(train_scores, axis=1), np.std(train_scores, axis=1),
+        np.mean(val_scores,   axis=1), np.std(val_scores,   axis=1),
+        model_name="SVM"
+    )
     #--------------------------------------------------------------
     # Pipeline Gradient Boosting
     pipeline_XGB = Pipeline(steps=[                                                        # define the pipeline
@@ -384,7 +428,21 @@ def main():                                                                     
     print(f"CL Report of XGB:\n", classification_report(                                   # print the classification metrics
         y_validate, y_pred_XGB, zero_division='warn'))                                     # compare true and predicted labels
     ROC_STD_plot(mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr, "XGBoost model")          # plot the ROC STD 
+    
+    #Add learning curve plot
+    train_sizes, train_scores, val_scores = learning_curve(
+        classifier_XGB, X_train, y_train,
+        cv=StratifiedKFold(n_splits=5, shuffle=True, random_state=42), scoring="roc_auc",
+        train_sizes=np.linspace(0.1, 1.0, 10),
+        n_jobs=-1
+    )
 
+    learning_curve_plot(
+        train_sizes,
+        np.mean(train_scores, axis=1), np.std(train_scores, axis=1),
+        np.mean(val_scores,   axis=1), np.std(val_scores,   axis=1),
+        model_name="XGB"
+    )
     return X_train, classifier_LR, classifier_PLS_DA, classifier_SVM, classifier_XGB       # end the definition and give back these data and models
 
 #%% Run model
@@ -403,7 +461,6 @@ X_test, y_test = split_features_target(test_data)                               
 #%% LR test
 y_pred_regression = classifier_LR.predict(X_test)                                          # predict de labels
 probabilities_regression = classifier_LR.predict_proba(X_test)[:, 1]                       # predict the probabilities
-
 mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr = Bootstrap_calculation(y_test, probabilities_regression, y_pred_regression)                 # calculate the confidence intervals for the AUC and classification metrics using bootstrapping
 print(f"CL Report of LR:\n", classification_report(y_test, y_pred_regression, zero_division='warn'))     # print the classification metrics
 ROC_STD_plot(mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr, "Logistic regression model")
