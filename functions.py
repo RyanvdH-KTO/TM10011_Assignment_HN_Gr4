@@ -9,8 +9,10 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 # Missing data functie
 def check_missing_values(data):
 
-    missing = data.isnull().sum()
-    missing = missing[missing > 0]
+    missing = data.isnull().sum()   # data.isnull() transforms 'data' into a table with True (if a value is missing) and False (if there is a value)
+                                    # In pandas True = 1 and False = 0, so with .sum() you add up the missing values
+
+    missing = missing[missing > 0]  # Data only gets stored in missing if it is True (value missing)
 
     if missing.empty:
         print("No missing data")
@@ -21,7 +23,7 @@ def check_missing_values(data):
     return missing
 
 # Split data into features (X) and target (y)
-def split_features_target(data, label_col='label'):
+def split_features_target(data, label_col='label'):     
     X = data.drop(columns=[label_col]) 
     y = data[label_col]
     #Encode labels: T12 = 0, T34 = 1
@@ -50,15 +52,14 @@ def plot_correlation_matrix(X_train, to_drop, feature_names=None):
     plt.savefig("correlation_matrix.png", dpi=150, bbox_inches="tight")
     plt.show()
 
-def summarize(arr):
-    arr = np.array(arr)
-    return arr.mean(), np.percentile(arr, 2.5), np.percentile(arr, 97.5)         
+def summarize(arr):                                                         # takes a list of values 
+    return arr.mean(), np.percentile(arr, 2.5), np.percentile(arr, 97.5)    # and returns mean, lower bound and upper bound     
 
-def Bootstrap_calculation(y_test, probabilities, y_pred):
+def Bootstrap_calculation(y_test, probabilities, y_pred):   # Bootstrapping to test models robustness: if the data had been a little different, how would the model perform?
     n_bootstrap = 5000
-    rng = np.random.default_rng(42)
+    rng = np.random.default_rng(42)                         # random number generator
 
-    tprs = []
+    tprs = []                                               # after bootstrapping, n_bootstrap# of values per metric
     aucs = []
     accs = []
     precs = []
@@ -69,40 +70,44 @@ def Bootstrap_calculation(y_test, probabilities, y_pred):
     y_true = y_test.values
 
     for _ in range(n_bootstrap):
-        # sample with replacement
-        indices = rng.integers(0, len(y_true), len(y_true))
+        # Radnom indices sampleld with replacement
+        indices = rng.integers(0, len(y_true), len(y_true)) # list with random len(y_true)# indexnumbers between 0 and len(y_true)
         
-        y_sample = y_true[indices]
+        y_sample = y_true[indices]                          # make new lists with selected random indices
         prob_sample = probabilities[indices]
         pred_sample = y_pred[indices]
 
-        if len(np.unique(y_sample)) < 2:
+        if len(np.unique(y_sample)) < 2:                    # np.unique returns the unique values in the list, 
+                                                            # if this is not [0,1], there is only one class: then skip this bootstrap and continue to next
+                                                            
             continue
 
         fpr, tpr, _ = roc_curve(y_sample, prob_sample)
         
-        tpr_interp = np.interp(mean_fpr, fpr, tpr)
-        tpr_interp[0] = 0.0
+        tpr_interp = np.interp(mean_fpr, fpr, tpr)          # interpolate tpr values to rigid mean_fpr x-axis
+                                                            # (due to bootstrapping, ROC's don't contain same amount of unique points)
+        tpr_interp[0] = 0.0                                 # ROC starts at 0,0                            
 
-        tprs.append(tpr_interp)
-        aucs.append(auc(fpr, tpr))
+        # Add al n_bootstrap# of values to lists
+        tprs.append(tpr_interp)                                 # n_bootstrap# of curves, each curve contains 100 values                           
+        aucs.append(auc(fpr, tpr))                              # n_bootstrap# of values for auc, acc, prec, rec, f1
         accs.append(accuracy_score(y_sample, pred_sample))
         precs.append(precision_score(y_sample, pred_sample, zero_division=0))
         recs.append(recall_score(y_sample, pred_sample, zero_division=0))
         f1s.append(f1_score(y_sample, pred_sample, zero_division=0))
 
     # Aggregate
-    mean_tpr = np.mean(tprs, axis=0)
-    std_tpr = np.std(tprs, axis=0)
+    mean_tpr = np.mean(tprs, axis=0)                        # for every value of fpr, mean value of tpr
+    std_tpr = np.std(tprs, axis=0)                          # standard deviation around tpr mean: necessary for roc-auc plot
 
-    mean_auc = np.mean(aucs)
-    std_auc = np.std(aucs)
+    mean_auc = np.mean(aucs)                                # mean performance
+    std_auc = np.std(aucs)                                  # std of mean performance: necessary for roc-auc plot legend
 
     # 95% CI for AUC
-    ci_lower = np.percentile(aucs, 2.5)
+    ci_lower = np.percentile(aucs, 2.5)                     # 95% of auc values between lower and upper
     ci_upper = np.percentile(aucs, 97.5)
 
-    acc_mean, acc_lo, acc_hi = summarize(accs)
+    acc_mean, acc_lo, acc_hi = summarize(accs)              # per metric: mean, lower CI, upper CI
     prec_mean, prec_lo, prec_hi = summarize(precs)
     rec_mean, rec_lo, rec_hi = summarize(recs)
     f1_mean, f1_lo, f1_hi = summarize(f1s)
@@ -116,12 +121,13 @@ def Bootstrap_calculation(y_test, probabilities, y_pred):
     
     return mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr
 
-def ROC_STD_plot(mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr, model):
+def ROC_STD_plot(mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr, model):  # Makes mean ROC-curve + std,
+                                                                          # Uses nested cv values: it shows the variety of the model during training, not the final model
     plt.figure(figsize=(8,6))
-    plt.plot(mean_fpr, mean_tpr,
+    plt.plot(mean_fpr, mean_tpr,                                          # FPR on the x-axis, TPR on the y-axis
              label=f"Mean ROC (AUC = {mean_auc:.3f} ± {std_auc:.3f})",
              linewidth=2)
-    plt.fill_between(mean_fpr,
+    plt.fill_between(mean_fpr,                                            # Shading the standard deviations
                      mean_tpr - std_tpr,
                      mean_tpr + std_tpr,
                      alpha=0.2, label="±1 std")

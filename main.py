@@ -33,7 +33,7 @@ def main():                                                                     
         X,                                                                                 # feature matrix
         y,                                                                                 # target vector
         test_size=0.2,                                                                     # 20% of data to validationset 
-        stratify=y,                                                                        # keep classification in both sets
+        stratify=y,                                                                        # keep classification balance equal in both sets
         random_state=42)                                                                   # same seed for reproducibility
 
     print("Train shape:", X_train.shape)                                                   # print the shape of the training set
@@ -48,19 +48,19 @@ def main():                                                                     
     #--------------------------------------------------------------
     # Pipeline Logistic regression
     pipeline_regression = Pipeline(steps=[                                                 # define the pipeline
-        ('scaler', MinMaxScaler()),                                                     # scale features by minmaxscaler method, want geen outliers en geen normale distributie
-        ('covariance_filter', DropCorrelatedFeatures(threshold=0.95)),                     # filter for correlation, drop features which are correlated higher than 0.95
-        ('selector', SFS),                                                              # placeholder for featureselector in grid search, dit staat er voor saus, want wordt mogelijk veranderd, staat alleen om initiele waarde te defineren 
+        ('scaler', MinMaxScaler()),                                                        # scale features by minmaxscaler method: no outliers, no normal distribution of data 
+        ('correlation_filter', DropCorrelatedFeatures(threshold=0.95)),                     # filter for correlation, drop features which are correlated higher than 0.95
+        ('selector', SFS),                                                                 # placeholder for featureselector in grid search: defines initial values for start 
         ('classifier', LogisticRegression(                                                 # define classifier
                         penalty='l1',                                                      # penalty settings
-                        solver='saga',                                                     # solver that support elasticnet
+                        solver='saga',                                                     # solver that supports elasticnet
                         class_weight='balanced',                                           # correct for skewed class distribution
                         random_state=42,                                                   # same seed for reproducibility
                         max_iter=1000))])                                                  # define max iterations
 
      # RFE en SFS werkt goed voor LG en SVM, via referentie gevonden. ALleen deze twee, want deze twee hebben als enige een selector 
     param_grid_regression = [{                                                             # define the grid-parameter
-        'selector': [RFE(LogisticRegression(                                               # RFE as  estimator option
+        'selector': [RFE(LogisticRegression(                                               # Recursive feature elimination as estimator option: iteratively removes least important features
                                             max_iter=1000,                                 # define max iterations
                                             random_state=42),                              # same seed for reproducibility
                                             n_features_to_select=25),                  # select this amount of the most important features to keep, getest in increments van 5 handmatig getest. deze is optimaal
@@ -70,7 +70,7 @@ def main():                                                                     
                                             n_features_to_select="auto",                   # automatically determine the optimal number of features to keep
                                             direction="forward",                           # add the feature one by one till performance doesn't improve
                                             scoring=scoring,                               # scoring is based on the earlier defines variable: ROC-AUC
-                                            cv=0,                                          # this is the cross-validation in the selector
+                                            cv=0,                                          # this is the cross-validation in the selector: it is set to cv = 0 --> which means that the selector evaluates features on the same data that the model is trained on
                                             n_jobs=1),                                     # use 1 CPU core, so it runs faster
                     SFS(LogisticRegression(                                                # SFS backward as feature selector option 
                                             max_iter=1000,                                 # define max iterations
@@ -127,7 +127,7 @@ def main():                                                                     
         grid_search_regression.fit(X_tr, y_tr)                                             # fit the grid search
         best_model = grid_search_regression.best_estimator_                                # store the best model
 
-        probs = best_model.predict_proba(X_val)[:, 1]                                      # predicht the probabilities
+        probs = best_model.predict_proba(X_val)[:, 1]                                      # predicht the probabilities: per sample it gives the probability for each class (samples taken as first column)
 
         fpr, tpr, _ = roc_curve(y_val, probs)                                              # calculate the roc curve
         tpr_interp = np.interp(mean_fpr, fpr, tpr)                                         # interpolate the TPR valies onto the common FPR axis
@@ -150,15 +150,18 @@ def main():                                                                     
         refit = True,                                                                      # retrain the best model on the full training set
         n_jobs=-1)                                                                         # use all available CPU cores
 
-    final_grid_search_regression.fit(X_train, y_train)                                     # fit the grid search on the training data
-    classifier_LR = final_grid_search_regression.best_estimator_                           # store the best model
+    final_grid_search_regression.fit(X_train, y_train)                                     # fit the grid search on the training data: this is where the model gets trained
+    classifier_LR = final_grid_search_regression.best_estimator_                           # store the best model: with best scalar, feature selctor and hyperparameters
 
     y_pred_regression = classifier_LR.predict(X_validate)                                  # predict the class labels for the validation set
     probabilities_regression = classifier_LR.predict_proba(X_validate)[:, 1]               # predict the probabilities for the positive classes
     # je pakt de eerste kolom met alle rijen ([:,1]), omdat er geen patiëntlabels zitten in de data  zitten en HF-energy geen zelfde getallen hebben, kan je dat dus als label gebruiken
 
     print('Best parameters found:\n', final_grid_search_regression.best_params_)           # print the best parameter combination
-    print(f"CL Report of LR:\n", classification_report(                                    # print the classification metrics
+    print(f"CL Report of LR:\n", classification_report(                                    # print the classification metrics: inputs are y_validate (truth) and y_pred_regression (model's predictions) 
+                                                                                           # per class: precision, recall, f1-score, support 
+                                                                                           # zero_devision='warn' gives warning for dividing by zero in stead of crashing
+
         y_validate, y_pred_regression, zero_division='warn'))                              # compare true and predicted labels
     ROC_STD_plot(mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr, "Logistic regression model") # plot the ROC STD 
     
@@ -170,7 +173,7 @@ def main():                                                                     
     
     pipeline_pls_da = Pipeline([                                                           # define the pipeline
         ('scaler', MinMaxScaler()),                                                        # scale features by minmaxscaler method
-        ('covariance_filter', DropCorrelatedFeatures(threshold=0.95)),                     # filter for correlation, drop features which are correlated higher than 0.95
+        ('correlation_filter', DropCorrelatedFeatures(threshold=0.95)),                     # filter for correlation, drop features which are correlated higher than 0.95
         ('pls', PLSRegression(                                                             # transform the data into a smaller set of latent PLS components
             n_components=10,                                                               # use 10 components to summarize the most relevant information
             scale=False,                                                                   # disable internal scaling because scaling is already done earlier
@@ -241,7 +244,7 @@ def main():                                                                     
     # Pipeline Support Vector Machine
     pipeline_SVM = Pipeline(steps=[                                                        # define the pipeline
         ('scaler', MinMaxScaler()),                                                        # scale features by minmaxscaler method
-        ('covariance_filter', DropCorrelatedFeatures(threshold=0.95)),                     # filter for covariance, drop features which are correlated higher than 0.95
+        ('correlation_filter', DropCorrelatedFeatures(threshold=0.95)),                     # filter for correlation, drop features which are correlated higher than 0.95
         ('selector', SFS),                                                                 # placeholder for featureselector in grid search
         ('classifier', SVC(                                                                # define classifier
                         random_state=42,                                                   # same seed for reproducibility
@@ -274,7 +277,7 @@ def main():                                                                     
                             cv=0,                                                          # this is the cross-validation in the selector
                             n_jobs=1)],                                                    # use 1 CPU core, so it runs faster
         'classifier__kernel': ['linear', 'poly', 'rbf', 'sigmoid'],                        # test different kernel functions to learn linear or non-linear decision boundaries
-        'classifier__C': [0.0001, 0.001, 0.01, 1, 5, 10, 100, 1000],                       # test different regularization strengths
+        'classifier__C': [0.0001, 0.001, 0.01, 1, 5, 10, 100, 1000],                       # test different regularization strengths: higher C --> complex decision boundary
         'classifier__gamma':['auto', 'scale', 0.0001, 0.001, 0.01, 1, 10, 100, 1000]}      # test different gamma values, which control how far the influence of one sample reaches
 
     tprs = []                                                                              # make a empty variable to store the true positive rate curves
@@ -329,7 +332,7 @@ def main():                                                                     
     #--------------------------------------------------------------
     # Pipeline Gradient Boosting
     pipeline_XGB = Pipeline(steps=[                                                        # define the pipeline
-        ('covariance_filter', DropCorrelatedFeatures(threshold=0.95)),                     # filter for correlation, drop features which are correlated higher than 0.95
+        ('correlation_filter', DropCorrelatedFeatures(threshold=0.95)),                    # filter for correlation, drop features which are correlated higher than 0.95
         ('classifier', xgb.XGBClassifier(                                                  # define classifier
                         random_state=42,                                                   # same seed for reproducibility
                         n_estimators=1000,                                                 # use 1000 boosting trees as the initial setting
@@ -337,8 +340,8 @@ def main():                                                                     
                         learning_rate=0.1))])                                              # set the step size used to update the model during training
     
     param_grid_XGB = {                                                                     # define the grid-parameter
-    'classifier__n_estimators': [100, 300, 500],                                           # test different numbers of trees
-    'classifier__max_depth': [3, 5, 7],                                                    # test different numbers of three depths to control model complexity
+    'classifier__n_estimators': [100, 300, 500],                                           # test different numbers of sequential trees
+    'classifier__max_depth': [3, 5, 7],                                                    # test different numbers of max depths per tree to control tree complexity
     'classifier__learning_rate': [0.01, 0.05, 0.1],                                        # test different learning rates for the boosting process
     'classifier__subsample': [0.8, 1.0],                                                   # test different fractions of training samples used per tree
     'classifier__colsample_bytree': [0.8, 1.0]}                                            # test different fractions of features used per tree
@@ -408,15 +411,15 @@ check_missing_values(test_data)                                                 
 X_test, y_test = split_features_target(test_data)                                          # split the test dataset into features and target labels
 
 #%% LR test
-y_pred_regression = classifier_LR.predict(X_test)                                          # predict de labels
+y_pred_regression = classifier_LR.predict(X_test)                                          # predict de labels on final trained model: classifier_LR
 probabilities_regression = classifier_LR.predict_proba(X_test)[:, 1]                       # predict the probabilities
 
 mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr = Bootstrap_calculation(y_test, probabilities_regression, y_pred_regression)                 # calculate the confidence intervals for the AUC and classification metrics using bootstrapping
 print(f"CL Report of LR:\n", classification_report(y_test, y_pred_regression, zero_division='warn'))     # print the classification metrics
-ROC_STD_plot(mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr, "Logistic regression model")
+ROC_STD_plot(mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr, "Logistic regression model")  # output from bootstrap used for ROC-AUC plot
 
 # PLS-DA test
-y_pred_PLS_DA = classifier_PLS_DA.predict(X_test)                                          # predict the labels
+y_pred_PLS_DA = classifier_PLS_DA.predict(X_test)                                          # predict the labels on final trained model: classifier_PLS_DA
 probabilities_PLS_DA = classifier_PLS_DA.predict_proba(X_test)[:, 1]                       # predict the probabilities
 
 mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr = Bootstrap_calculation(y_test, probabilities_PLS_DA, y_pred_PLS_DA)                 # calculate the confidence intervals for the AUC and classification metrics using bootstrapping
