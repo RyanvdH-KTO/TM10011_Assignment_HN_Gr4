@@ -48,21 +48,22 @@ def main():                                                                     
     #--------------------------------------------------------------
     # Pipeline Logistic regression
     pipeline_regression = Pipeline(steps=[                                                 # define the pipeline
-        ('scaler', MinMaxScaler()),                                                        # scale features by minmaxscaler method
+        ('scaler', MinMaxScaler()),                                                     # scale features by minmaxscaler method, want geen outliers en geen normale distributie
         ('covariance_filter', DropCorrelatedFeatures(threshold=0.95)),                     # filter for correlation, drop features which are correlated higher than 0.95
-        ('selector', SFS),                                                                 # placeholder for featureselector in grid search
+        ('selector', SFS),                                                              # placeholder for featureselector in grid search, dit staat er voor saus, want wordt mogelijk veranderd, staat alleen om initiele waarde te defineren 
         ('classifier', LogisticRegression(                                                 # define classifier
                         penalty='l1',                                                      # penalty settings
                         solver='saga',                                                     # solver that support elasticnet
                         class_weight='balanced',                                           # correct for skewed class distribution
                         random_state=42,                                                   # same seed for reproducibility
-                        max_iter=10000))])                                                 # define max iterations
+                        max_iter=1000))])                                                  # define max iterations
 
+     # RFE en SFS werkt goed voor LG en SVM, via referentie gevonden. ALleen deze twee, want deze twee hebben als enige een selector 
     param_grid_regression = [{                                                             # define the grid-parameter
         'selector': [RFE(LogisticRegression(                                               # RFE as  estimator option
                                             max_iter=1000,                                 # define max iterations
                                             random_state=42),                              # same seed for reproducibility
-                                            n_features_to_select=25),                      # select this amount of the most important features to keep
+                                            n_features_to_select=25),                  # select this amount of the most important features to keep, getest in increments van 5 handmatig getest. deze is optimaal
                     SFS(LogisticRegression(                                                # SFS forward as feature selector option 
                                             max_iter=1000,                                 # define max iterations
                                             random_state=42),                              # same seed for reproducibility
@@ -80,8 +81,8 @@ def main():                                                                     
                                             cv=0,                                          # this is the cross-validation in the selector
                                             n_jobs=1)],                                    # use 1 CPU core, so it runs faster
         'classifier__C': [0.001, 0.01, 0.1, 1, 10],                                        # test different regularization strengths
-        'classifier__penalty': ['l1', 'l2'],                                               # test L1 and L2 regularization as penalty
-        'classifier__solver': ['liblinear']                                                # use liblinear as solver
+        'classifier__penalty': ['l1', 'l2'],                                          # test L1 and L2 regularization as penalty. L1 kan features op 0 zetten, L2 niet
+        'classifier__solver': ['liblinear']                                           # use liblinear as solver. optimizatie alghoritme om de beste combi te vinden
     }, {                                                                                   # choose between these options, with different in penalty and solvers
         'selector': [RFE(LogisticRegression(                                               # RFE as  estimator option
                                             max_iter=1000,                                 # define max iterations
@@ -105,8 +106,10 @@ def main():                                                                     
                                             n_jobs=1)],                                    # use 1 CPU core, so it runs faster
         'classifier__C': [0.001, 0.01, 0.1, 1, 10],                                        # test different regularization strengths
         'classifier__penalty': ['elasticnet'],                                             # use elasticnet als penalty
-        'classifier__solver': ['saga']}]                                                   # use saga as solver
-   
+        'classifier__solver': ['saga']}]                                               # use saga as solver, meer ontworpen voor grote dataset, liblinear meer voor kleine datasets
+    # dit hierboven bestaat uit twee groten delen, omdat de solver liblinear niet met een elesticnet penalty werkt
+
+    #---------- stuk om je confidence interval te krijgen: begin
     tprs = []                                                                              # make a empty variable to store the true positive rate curves
     aucs = []                                                                              # make a empty variable to store the auc values
     mean_fpr = np.linspace(0, 1, 100)                                                      # create 100 evenly spaced FPR values to use as a common x-axis for averaging ROC curves across folds
@@ -118,6 +121,7 @@ def main():                                                                     
         grid_search_regression = GridSearchCV(pipeline_regression, param_grid_regression,  # preform the grid search
                                         cv=inner_cv,                                       # use the previously defined inner cross-validation folds
                                         scoring=scoring,                                   # scoring is based on the earlier defines variable: ROC-AUC
+        # normaal: trainen met kleine stukjes data voor hyperparameter selection, met refit =true: op het einde trainen met de gehele data en best gevonde hyperparameters
                                         refit = True,                                      # retrain the best model on the full training set
                                         n_jobs=-1)                                         # use all available CPU cores
         grid_search_regression.fit(X_tr, y_tr)                                             # fit the grid search
@@ -136,6 +140,7 @@ def main():                                                                     
     std_tpr = np.std(tprs, axis=0)                                                         # calculate the std of true positive rate
     mean_auc = np.mean(aucs)                                                               # calculate the mean of the auc
     std_auc = np.std(aucs)                                                                 # calculate the std of the auc
+    #---------- einde stuk
 
     final_grid_search_regression = GridSearchCV(                                           # search the best parameters combination
         pipeline_regression,                                                               # for this model
@@ -150,7 +155,8 @@ def main():                                                                     
 
     y_pred_regression = classifier_LR.predict(X_validate)                                  # predict the class labels for the validation set
     probabilities_regression = classifier_LR.predict_proba(X_validate)[:, 1]               # predict the probabilities for the positive classes
-    
+    # je pakt de eerste kolom met alle rijen ([:,1]), omdat er geen patiëntlabels zitten in de data  zitten en HF-energy geen zelfde getallen hebben, kan je dat dus als label gebruiken
+
     print('Best parameters found:\n', final_grid_search_regression.best_params_)           # print the best parameter combination
     print(f"CL Report of LR:\n", classification_report(                                    # print the classification metrics
         y_validate, y_pred_regression, zero_division='warn'))                              # compare true and predicted labels
