@@ -19,7 +19,7 @@ from functions import check_missing_values, split_features_target               
 from functions import Bootstrap_calculation, ROC_STD_plot                                  # import zelf gebouwde functie
 
 #%% Load Data
-data = pd.read_csv('hn/Trainings_data.csv', index_col=0)                                   # read the csv with 
+data = pd.read_csv('hn/Trainings_data.csv', index_col=0)                                   # read the csv (first column is index) with 
 print(f'The number of samples: {len(data.index)}')                                         # print the number of samples. The number of rows equal the number of samples
 print(f'The number of features: {len(data.columns)}')                                      # print the number of features/ The number of columns correspond to the number of features
 print(data['label'].value_counts())                                                        # print datatype
@@ -49,7 +49,8 @@ def main():                                                                     
     # Pipeline Logistic regression
     pipeline_regression = Pipeline(steps=[                                                 # define the pipeline
         ('scaler', MinMaxScaler()),                                                        # scale features by minmaxscaler method: no outliers, no normal distribution of data 
-        ('correlation_filter', DropCorrelatedFeatures(threshold=0.95)),                     # filter for correlation, drop features which are correlated higher than 0.95
+                                                                                           # scaled to a value between 0 - 1: X = (X - Xmin) / (Xmax - Xmin)
+        ('correlation_filter', DropCorrelatedFeatures(threshold=0.95)),                    # filter for correlation, drop features which are correlated higher than 0.95
         ('selector', SFS),                                                                 # placeholder for featureselector in grid search: defines initial values for start 
         ('classifier', LogisticRegression(                                                 # define classifier
                         penalty='l1',                                                      # penalty settings
@@ -63,14 +64,15 @@ def main():                                                                     
         'selector': [RFE(LogisticRegression(                                               # Recursive feature elimination as estimator option: iteratively removes least important features
                                             max_iter=1000,                                 # define max iterations
                                             random_state=42),                              # same seed for reproducibility
-                                            n_features_to_select=25),                  # select this amount of the most important features to keep, getest in increments van 5 handmatig getest. deze is optimaal
+                                            n_features_to_select=25),                      # select amount of the most important features to keep, manually tested in increments of 5
                     SFS(LogisticRegression(                                                # SFS forward as feature selector option 
                                             max_iter=1000,                                 # define max iterations
                                             random_state=42),                              # same seed for reproducibility
-                                            n_features_to_select="auto",                   # automatically determine the optimal number of features to keep
+                                            n_features_to_select="auto",                   # automatically determine the optimal number of features to keep (tol default: 1e-5)
                                             direction="forward",                           # add the feature one by one till performance doesn't improve
                                             scoring=scoring,                               # scoring is based on the earlier defines variable: ROC-AUC
-                                            cv=0,                                          # this is the cross-validation in the selector: it is set to cv = 0 --> which means that the selector evaluates features on the same data that the model is trained on
+                                            cv=0,                                          # this is the cross-validation in the selector: it is set to cv = 0 
+                                                                                           #--> the selector evaluates features on the same data that the model is trained on
                                             n_jobs=1),                                     # use 1 CPU core, so it runs faster
                     SFS(LogisticRegression(                                                # SFS backward as feature selector option 
                                             max_iter=1000,                                 # define max iterations
@@ -81,9 +83,10 @@ def main():                                                                     
                                             cv=0,                                          # this is the cross-validation in the selector
                                             n_jobs=1)],                                    # use 1 CPU core, so it runs faster
         'classifier__C': [0.001, 0.01, 0.1, 1, 10],                                        # test different regularization strengths
-        'classifier__penalty': ['l1', 'l2'],                                          # test L1 and L2 regularization as penalty. L1 kan features op 0 zetten, L2 niet
-        'classifier__solver': ['liblinear']                                           # use liblinear as solver. optimizatie alghoritme om de beste combi te vinden
-    }, {                                                                                   # choose between these options, with different in penalty and solvers
+        'classifier__penalty': ['l1', 'l2'],                                               # test L1 and L2 regularization as penalty. L1 kan features op 0 zetten, L2 niet
+        'classifier__solver': ['liblinear']                                                # use liblinear (works better on smaller datastes) as solver = optimization algorithm 
+    }, {   
+    # Split into two parts due to mismatch elasticnet and liblinear                         
         'selector': [RFE(LogisticRegression(                                               # RFE as  estimator option
                                             max_iter=1000,                                 # define max iterations
                                             random_state=42),                              # same seed for reproducibility
@@ -105,32 +108,32 @@ def main():                                                                     
                                             cv=0,                                          # this is the cross-validation in the selector
                                             n_jobs=1)],                                    # use 1 CPU core, so it runs faster
         'classifier__C': [0.001, 0.01, 0.1, 1, 10],                                        # test different regularization strengths
-        'classifier__penalty': ['elasticnet'],                                             # use elasticnet als penalty
-        'classifier__solver': ['saga']}]                                               # use saga as solver, meer ontworpen voor grote dataset, liblinear meer voor kleine datasets
-    # dit hierboven bestaat uit twee groten delen, omdat de solver liblinear niet met een elesticnet penalty werkt
+        'classifier__penalty': ['elasticnet'],                                             # use elasticnet als penalty: combination of l1 and l2
+        'classifier__solver': ['saga']}]                                                   # use saga as solver (works better on larger datasets, elasticnet does not comply with liblinear)
+    
 
-    #---------- stuk om je confidence interval te krijgen: begin
-    tprs = []                                                                              # make a empty variable to store the true positive rate curves
-    aucs = []                                                                              # make a empty variable to store the auc values
+    # Start nested cross-validation for std in AUC
+    tprs = []                                                                              # create an empty variable to store the true positive rate curves
+    aucs = []                                                                              # create an empty variable to store the auc values
     mean_fpr = np.linspace(0, 1, 100)                                                      # create 100 evenly spaced FPR values to use as a common x-axis for averaging ROC curves across folds
 
     for train_idx, val_idx in outer_cv.split(X_train,y_train):                             # loop through the outer cross-validation folds
         X_tr, X_val = X_train.iloc[train_idx], X_train.iloc[val_idx]                       # split the training data into 2 sets
         y_tr, y_val = y_train.iloc[train_idx], y_train.iloc[val_idx]                       # split the label data into 2 sets
 
-        grid_search_regression = GridSearchCV(pipeline_regression, param_grid_regression,  # preform the grid search
+        grid_search_regression = GridSearchCV(pipeline_regression, param_grid_regression,  # perform the grid search
                                         cv=inner_cv,                                       # use the previously defined inner cross-validation folds
                                         scoring=scoring,                                   # scoring is based on the earlier defines variable: ROC-AUC
-        # normaal: trainen met kleine stukjes data voor hyperparameter selection, met refit =true: op het einde trainen met de gehele data en best gevonde hyperparameters
                                         refit = True,                                      # retrain the best model on the full training set
                                         n_jobs=-1)                                         # use all available CPU cores
         grid_search_regression.fit(X_tr, y_tr)                                             # fit the grid search
         best_model = grid_search_regression.best_estimator_                                # store the best model
 
-        probs = best_model.predict_proba(X_val)[:, 1]                                      # predicht the probabilities: per sample it gives the probability for each class (samples taken as first column)
+        probs = best_model.predict_proba(X_val)[:, 1]                                      # predict the probabilities: per sample it gives the probability for class 1 (T34) 
+                                                                                           # (samples defined from first column)
 
         fpr, tpr, _ = roc_curve(y_val, probs)                                              # calculate the roc curve
-        tpr_interp = np.interp(mean_fpr, fpr, tpr)                                         # interpolate the TPR valies onto the common FPR axis
+        tpr_interp = np.interp(mean_fpr, fpr, tpr)                                         # interpolate the TPR values onto the common FPR axis
         tpr_interp[0] = 0.0                                                                # force to ROC curve to start at 0
 
         tprs.append(tpr_interp)                                                            # store the interpoled TPR curve 
@@ -140,7 +143,9 @@ def main():                                                                     
     std_tpr = np.std(tprs, axis=0)                                                         # calculate the std of true positive rate
     mean_auc = np.mean(aucs)                                                               # calculate the mean of the auc
     std_auc = np.std(aucs)                                                                 # calculate the std of the auc
-    #---------- einde stuk
+ 
+    # End of nested cv
+    # Start final grid search for best model performance
 
     final_grid_search_regression = GridSearchCV(                                           # search the best parameters combination
         pipeline_regression,                                                               # for this model
@@ -155,13 +160,11 @@ def main():                                                                     
 
     y_pred_regression = classifier_LR.predict(X_validate)                                  # predict the class labels for the validation set
     probabilities_regression = classifier_LR.predict_proba(X_validate)[:, 1]               # predict the probabilities for the positive classes
-    # je pakt de eerste kolom met alle rijen ([:,1]), omdat er geen patiëntlabels zitten in de data  zitten en HF-energy geen zelfde getallen hebben, kan je dat dus als label gebruiken
-
+                                                                                           # Use second column with all rows ([:,1]), because there are no patientlabels in the data after split 
     print('Best parameters found:\n', final_grid_search_regression.best_params_)           # print the best parameter combination
     print(f"CL Report of LR:\n", classification_report(                                    # print the classification metrics: inputs are y_validate (truth) and y_pred_regression (model's predictions) 
                                                                                            # per class: precision, recall, f1-score, support 
                                                                                            # zero_devision='warn' gives warning for dividing by zero in stead of crashing
-
         y_validate, y_pred_regression, zero_division='warn'))                              # compare true and predicted labels
     ROC_STD_plot(mean_fpr, mean_tpr, mean_auc, std_auc, std_tpr, "Logistic regression model") # plot the ROC STD 
     

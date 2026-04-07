@@ -55,7 +55,8 @@ def plot_correlation_matrix(X_train, to_drop, feature_names=None):
 def summarize(arr):                                                         # takes a list of values 
     return arr.mean(), np.percentile(arr, 2.5), np.percentile(arr, 97.5)    # and returns mean, lower bound and upper bound     
 
-def Bootstrap_calculation(y_test, probabilities, y_pred):   # Bootstrapping to test models robustness: if the data had been a little different, how would the model perform?
+def Bootstrap_calculation(y_test, probabilities, y_pred):   # Bootstrapping to test models robustness: 
+                                                            # if the data had been a little different, how would the model perform?
     n_bootstrap = 5000
     rng = np.random.default_rng(42)                         # random number generator
 
